@@ -1,0 +1,441 @@
+// Prisma Schema for SharedReads Platform
+// Database: PostgreSQL 15+ (Neon serverless)
+// Generated: 2025-12-25
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========================================
+// User Entity
+// ========================================
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  phone        String        @unique
+  passwordHash String
+  name         String?
+  profilePhoto String? // Cloudinary URL
+  location     Json? // { lat: number, lng: number, address: string }
+
+  // Verification status
+  emailVerified Boolean   @default(false)
+  phoneVerified Boolean   @default(false)
+  emailOtpHash  String?
+  phoneOtpHash  String?
+  otpExpiresAt  DateTime?
+
+  // Reputation & status
+  reputationScore Float         @default(0.0) // 0-5 calculated from reviews
+  accountStatus   AccountStatus @default(ACTIVE)
+  suspendedReason String?
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  // Relations
+  listedBooks BookListing[] @relation("LenderBooks")
+
+  borrowRequests BorrowRequest[] @relation("BorrowerRequests")
+  lenderRequests BorrowRequest[] @relation("LenderRequests")
+
+  transactionsAsBorrower Transaction[] @relation("BorrowerTransactions")
+  transactionsAsLender   Transaction[] @relation("LenderTransactions")
+
+  reviewsGiven    Review[] @relation("ReviewerReviews")
+  reviewsReceived Review[] @relation("RevieweeReviews")
+
+  disputesRaised Dispute[] @relation("DisputeInitiator")
+
+  userAgreements UserAgreement[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([accountStatus])
+  @@map("users")
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+// ========================================
+// Book Listing Entity
+// ========================================
+
+model BookListing {
+  id String @id @default(cuid())
+
+  // Book info
+  title       String
+  author      String
+  description String?
+
+  // Condition & rental terms
+  condition      BookCondition
+  rentalType     RentalType
+  rentalPrice    Decimal? @db.Decimal(10, 2) // NULL for FREE rentals
+  depositAmount  Decimal? @db.Decimal(10, 2) // Required for PAID, optional for FREE
+  rentalDuration Int // Days
+
+  // Images (Cloudinary URLs)
+  images String[] // Min 2, max 5
+
+  // Location
+  location Json // { lat: number, lng: number, address: string }
+
+  // Availability
+  available Boolean @default(true)
+
+  // Lender reference
+  lenderId String
+  lender   User   @relation("LenderBooks", fields: [lenderId], references: [id])
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  borrowRequests BorrowRequest[]
+  transactions   Transaction[]
+
+  @@index([lenderId])
+  @@index([rentalType])
+  @@index([available])
+  @@index([title])
+  @@index([author])
+  @@map("book_listings")
+}
+
+enum BookCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  ACCEPTABLE
+}
+
+enum RentalType {
+  FREE
+  PAID
+}
+
+// ========================================
+// Borrow Request Entity
+// ========================================
+
+model BorrowRequest {
+  id String @id @default(cuid())
+
+  // Request parties
+  borrowerId String
+  borrower   User   @relation("BorrowerRequests", fields: [borrowerId], references: [id])
+
+  lenderId String
+  lender   User   @relation("LenderRequests", fields: [lenderId], references: [id])
+
+  bookListingId String
+  bookListing   BookListing @relation(fields: [bookListingId], references: [id])
+
+  // Request status
+  status          RequestStatus @default(PENDING)
+  rejectionReason String?
+
+  // Timestamps
+  createdAt  DateTime  @default(now())
+  approvedAt DateTime?
+  rejectedAt DateTime?
+
+  // Relations
+  transaction Transaction? @relation("RequestTransaction")
+
+  @@unique([borrowerId, bookListingId, status])
+  @@index([borrowerId])
+  @@index([lenderId])
+  @@index([status])
+  @@map("borrow_requests")
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+// ========================================
+// Transaction Entity
+// ========================================
+
+model Transaction {
+  id String @id @default(cuid())
+
+  // Transaction parties
+  borrowerId String
+  borrower   User   @relation("BorrowerTransactions", fields: [borrowerId], references: [id])
+
+  lenderId String
+  lender   User   @relation("LenderTransactions", fields: [lenderId], references: [id])
+
+  bookListingId String
+  bookListing   BookListing @relation(fields: [bookListingId], references: [id])
+
+  borrowRequestId String        @unique
+  borrowRequest   BorrowRequest @relation("RequestTransaction", fields: [borrowRequestId], references: [id])
+
+  // Transaction status
+  status TransactionStatus @default(INITIATED)
+
+  // Financial info
+  depositAmount Decimal @db.Decimal(10, 2)
+  rentalAmount  Decimal @default(0) @db.Decimal(10, 2) // 0 for FREE rentals
+  platformFee   Decimal @default(0) @db.Decimal(10, 2) // 15% of rentalAmount
+
+  // Payment tracking (Razorpay)
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  paymentStatus     PaymentStatus @default(PENDING)
+
+  // Refund tracking
+  refundStatus      RefundStatus @default(NOT_INITIATED)
+  refundInitiatedAt DateTime?
+  refundCompletedAt DateTime?
+  refundReason      String?
+
+  // Evidence photos (Cloudinary URLs)
+  beforeHandoverPhoto String?
+  afterReturnPhoto    String?
+
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  depositPaidAt DateTime?
+  handoverAt    DateTime?
+  returnedAt    DateTime?
+  completedAt   DateTime?
+
+  // Relations
+  paymentTransactions PaymentTransaction[]
+  reviews             Review[]
+  dispute             Dispute?
+
+  @@index([borrowerId])
+  @@index([lenderId])
+  @@index([status])
+  @@map("transactions")
+}
+
+enum TransactionStatus {
+  INITIATED
+  DEPOSIT_PAID
+  BOOK_RECEIVED
+  BOOK_RETURNED
+  COMPLETED
+  DISPUTED
+  CANCELLED
+}
+
+// ========================================
+// Payment Transaction Entity
+// ========================================
+
+model PaymentTransaction {
+  id String @id @default(cuid())
+
+  // Razorpay identifiers
+  razorpayOrderId   String  @unique
+  razorpayPaymentId String? @unique
+
+  // Transaction details
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+
+  payerId String // User who made payment (borrower)
+
+  type     PaymentType
+  amount   Decimal       @db.Decimal(10, 2)
+  currency String        @default("INR")
+  status   PaymentStatus @default(PENDING)
+
+  // Razorpay webhook data
+  gatewayResponse Json? // Full webhook payload
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  refundedAt  DateTime?
+
+  @@index([transactionId])
+  @@index([status])
+  @@map("payment_transactions")
+}
+
+enum PaymentType {
+  DEPOSIT
+  RENTAL
+  REFUND
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum RefundStatus {
+  NOT_INITIATED
+  INITIATED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ========================================
+// Review Entity
+// ========================================
+
+model Review {
+  id String @id @default(cuid())
+
+  // Review parties
+  reviewerId String
+  reviewer   User   @relation("ReviewerReviews", fields: [reviewerId], references: [id])
+
+  revieweeId String
+  reviewee   User   @relation("RevieweeReviews", fields: [revieweeId], references: [id])
+
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+
+  // Review content
+  rating  Int     @db.SmallInt // 1-5 stars
+  comment String?
+
+  // Timestamp
+  createdAt DateTime @default(now())
+
+  @@unique([reviewerId, transactionId])
+  @@index([revieweeId])
+  @@map("reviews")
+}
+
+// ========================================
+// Dispute Entity
+// ========================================
+
+model Dispute {
+  id String @id @default(cuid())
+
+  // Dispute subject
+  transactionId String      @unique
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+
+  // Raised by
+  raisedById String
+  raisedBy   User   @relation("DisputeInitiator", fields: [raisedById], references: [id])
+
+  // Dispute details
+  reason         DisputeReason
+  description    String
+  evidencePhotos String[] // Cloudinary URLs
+
+  // Counter-evidence
+  counterDescription String?
+  counterEvidence    String[] // Cloudinary URLs
+
+  // Admin resolution
+  status            DisputeStatus      @default(PENDING)
+  resolutionOutcome ResolutionOutcome?
+  resolutionNotes   String?
+  adminId           String?
+  admin             Admin?             @relation(fields: [adminId], references: [id])
+
+  // Timestamps
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([status])
+  @@index([adminId])
+  @@map("disputes")
+}
+
+enum DisputeReason {
+  DAMAGE
+  NOT_RETURNED
+  WRONG_CONDITION
+  OTHER
+}
+
+enum DisputeStatus {
+  PENDING
+  RESOLVED
+  REJECTED
+}
+
+enum ResolutionOutcome {
+  REFUND_TO_BORROWER // Full deposit to borrower
+  KEEP_WITH_LENDER // Full deposit to lender
+  SPLIT_50_50 // 50% deposit to each party
+}
+
+// ========================================
+// Admin Entity
+// ========================================
+
+model Admin {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         AdminRole @default(ADMIN)
+
+  // Activity audit
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  disputesResolved Dispute[]
+
+  @@index([email])
+  @@map("admins")
+}
+
+enum AdminRole {
+  ADMIN
+  SUPER_ADMIN
+}
+
+// ========================================
+// User Agreement Entity (GDPR Compliance)
+// ========================================
+
+model UserAgreement {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  agreementType AgreementType
+  version       String // e.g., "v1.0", "v1.1"
+  agreedAt      DateTime      @default(now())
+  ipAddress     String?
+
+  @@unique([userId, agreementType, version])
+  @@index([userId])
+  @@map("user_agreements")
+}
+
+enum AgreementType {
+  TOS // Terms of Service
+  PRIVACY // Privacy Policy
+  BORROWING_RULES // Platform borrowing rules
+}

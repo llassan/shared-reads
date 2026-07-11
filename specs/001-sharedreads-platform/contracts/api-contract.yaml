@@ -1,0 +1,1529 @@
+openapi: 3.0.3
+info:
+  title: SharedReads Platform API
+  description: |
+    RESTful API for SharedReads peer-to-peer book-sharing marketplace.
+    Enables lenders to list books, borrowers to search and request books,
+    and admins to manage disputes and monitor platform health.
+  version: 1.0.0
+  contact:
+    name: SharedReads Platform
+    email: support@sharedreads.app
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development
+  - url: https://api.sharedreads.app/v1
+    description: Production
+
+tags:
+  - name: Auth
+    description: User authentication and verification
+  - name: Books
+    description: Book listing management
+  - name: Search
+    description: Book search and discovery
+  - name: Requests
+    description: Borrow request management
+  - name: Transactions
+    description: Transaction lifecycle and payments
+  - name: Reviews
+    description: User reviews and reputation
+  - name: Disputes
+    description: Dispute resolution
+  - name: Admin
+    description: Admin dashboard and management
+  - name: Users
+    description: User profile management
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ==================== AUTH ENDPOINTS ====================
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register new user
+      description: Creates a new user account and sends OTP codes to email and phone
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, phone, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                  pattern: '^\+91[6-9]\d{9}$'
+                password:
+                  type: string
+                  minLength: 8
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+      responses:
+        '201':
+          description: User created, OTP sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "OTP sent to email and phone"
+                  userId:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email or phone already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/verify-otp:
+    post:
+      tags: [Auth]
+      summary: Verify email and phone OTP
+      description: Verifies OTP codes sent to email and phone during registration
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, emailOtp, phoneOtp]
+              properties:
+                userId:
+                  type: string
+                emailOtp:
+                  type: string
+                  pattern: '^\d{6}$'
+                phoneOtp:
+                  type: string
+                  pattern: '^\d{6}$'
+      responses:
+        '200':
+          description: Verification successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Verification successful"
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+        '400':
+          description: Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/resend-otp:
+    post:
+      tags: [Auth]
+      summary: Resend OTP codes
+      description: Resends OTP codes to email and phone (rate limited to 3 per hour)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+      responses:
+        '200':
+          description: OTP resent
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: User login
+      description: Authenticates user with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      description: Exchanges refresh token for new access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+        '401':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: User logout
+      description: Invalidates refresh token
+      responses:
+        '200':
+          description: Logout successful
+
+  # ==================== BOOK LISTING ENDPOINTS ====================
+
+  /books:
+    post:
+      tags: [Books]
+      summary: Create book listing
+      description: Creates a new book listing (verified lenders only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookListing'
+      responses:
+        '201':
+          description: Book listing created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookListing'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: User not verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags: [Books]
+      summary: Get user's book listings
+      description: Returns all book listings for authenticated user
+      responses:
+        '200':
+          description: List of book listings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  books:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookListing'
+                  total:
+                    type: integer
+
+  /books/{bookId}:
+    get:
+      tags: [Books]
+      summary: Get book listing details
+      description: Returns full details of a book listing
+      security: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Book listing details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookListingDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Books]
+      summary: Update book listing
+      description: Updates book listing (lender only, no active transactions)
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBookListing'
+      responses:
+        '200':
+          description: Book listing updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookListing'
+        '403':
+          description: Not authorized or book has active transactions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags: [Books]
+      summary: Delete book listing
+      description: Deletes book listing (lender only, no active transactions)
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Book listing deleted
+        '403':
+          description: Not authorized or book has active transactions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ==================== SEARCH ENDPOINTS ====================
+
+  /search/books:
+    get:
+      tags: [Search]
+      summary: Search books
+      description: Search for books by title, author, with location filtering
+      security: []
+      parameters:
+        - name: q
+          in: query
+          description: Search query (title or author)
+          required: false
+          schema:
+            type: string
+        - name: lat
+          in: query
+          description: User latitude for location filtering
+          required: true
+          schema:
+            type: number
+            format: float
+        - name: lng
+          in: query
+          description: User longitude for location filtering
+          required: true
+          schema:
+            type: number
+            format: float
+        - name: radius
+          in: query
+          description: Search radius in kilometers
+          required: false
+          schema:
+            type: number
+            default: 5
+        - name: condition
+          in: query
+          description: Filter by book condition
+          required: false
+          schema:
+            type: string
+            enum: [NEW, LIKE_NEW, GOOD, ACCEPTABLE]
+        - name: rentalType
+          in: query
+          description: Filter by rental type
+          required: false
+          schema:
+            type: string
+            enum: [FREE, PAID]
+        - name: availableOnly
+          in: query
+          description: Show only available books
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - name: limit
+          in: query
+          description: Number of results per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: cursor
+          in: query
+          description: Cursor for pagination
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  books:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookSearchResult'
+                  nextCursor:
+                    type: string
+                    nullable: true
+                  total:
+                    type: integer
+
+  # ==================== BORROW REQUEST ENDPOINTS ====================
+
+  /requests:
+    post:
+      tags: [Requests]
+      summary: Create borrow request
+      description: Submits a borrow request for a book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bookListingId]
+              properties:
+                bookListingId:
+                  type: string
+      responses:
+        '201':
+          description: Borrow request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BorrowRequest'
+        '400':
+          description: Cannot borrow own book or duplicate request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags: [Requests]
+      summary: Get borrow requests
+      description: Returns all borrow requests (sent and received)
+      parameters:
+        - name: role
+          in: query
+          description: Filter by role
+          required: false
+          schema:
+            type: string
+            enum: [borrower, lender]
+        - name: status
+          in: query
+          description: Filter by status
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+      responses:
+        '200':
+          description: List of borrow requests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BorrowRequest'
+
+  /requests/{requestId}/approve:
+    post:
+      tags: [Requests]
+      summary: Approve borrow request
+      description: Approves a borrow request (lender only)
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Request approved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  borrowRequest:
+                    $ref: '#/components/schemas/BorrowRequest'
+                  transaction:
+                    $ref: '#/components/schemas/Transaction'
+        '403':
+          description: Not authorized (not the lender)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /requests/{requestId}/reject:
+    post:
+      tags: [Requests]
+      summary: Reject borrow request
+      description: Rejects a borrow request (lender only)
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Request rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BorrowRequest'
+
+  # ==================== TRANSACTION ENDPOINTS ====================
+
+  /transactions/{transactionId}:
+    get:
+      tags: [Transactions]
+      summary: Get transaction details
+      description: Returns full transaction details
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transaction details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionDetail'
+        '403':
+          description: Not authorized (not borrower or lender)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /transactions/{transactionId}/pay:
+    post:
+      tags: [Transactions]
+      summary: Initiate payment
+      description: Creates Razorpay order for deposit and rental payment
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment order created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  razorpayOrderId:
+                    type: string
+                  amount:
+                    type: number
+                  currency:
+                    type: string
+                    example: INR
+                  razorpayKeyId:
+                    type: string
+
+  /transactions/{transactionId}/verify-payment:
+    post:
+      tags: [Transactions]
+      summary: Verify payment
+      description: Verifies Razorpay payment and updates transaction status
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [razorpayPaymentId, razorpayOrderId, razorpaySignature]
+              properties:
+                razorpayPaymentId:
+                  type: string
+                razorpayOrderId:
+                  type: string
+                razorpaySignature:
+                  type: string
+      responses:
+        '200':
+          description: Payment verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          description: Payment verification failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /transactions/{transactionId}/confirm-handover:
+    post:
+      tags: [Transactions]
+      summary: Confirm book handover
+      description: Lender confirms handover with before photo
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [beforePhoto]
+              properties:
+                beforePhoto:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Handover confirmed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+
+  /transactions/{transactionId}/confirm-return:
+    post:
+      tags: [Transactions]
+      summary: Confirm book return
+      description: Borrower confirms return with after photo
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [afterPhoto]
+              properties:
+                afterPhoto:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Return confirmed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+
+  /transactions/{transactionId}/verify-return:
+    post:
+      tags: [Transactions]
+      summary: Verify book return
+      description: Lender verifies returned book condition and completes transaction
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [conditionAcceptable]
+              properties:
+                conditionAcceptable:
+                  type: boolean
+                notes:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Return verified, transaction completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+
+  # ==================== REVIEW ENDPOINTS ====================
+
+  /reviews:
+    post:
+      tags: [Reviews]
+      summary: Submit review
+      description: Submits a review after completed transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [transactionId, rating]
+              properties:
+                transactionId:
+                  type: string
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                comment:
+                  type: string
+                  maxLength: 500
+      responses:
+        '201':
+          description: Review submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '400':
+          description: Transaction not completed or review already submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/{userId}/reviews:
+    get:
+      tags: [Reviews]
+      summary: Get user reviews
+      description: Returns all reviews received by a user
+      security: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User reviews
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reviews:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review'
+                  averageRating:
+                    type: number
+                    format: float
+                  totalReviews:
+                    type: integer
+
+  # ==================== DISPUTE ENDPOINTS ====================
+
+  /disputes:
+    post:
+      tags: [Disputes]
+      summary: Raise dispute
+      description: Raises a dispute for an active transaction
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [transactionId, reason, description]
+              properties:
+                transactionId:
+                  type: string
+                reason:
+                  type: string
+                  enum: [DAMAGE, NOT_RETURNED, WRONG_CONDITION, OTHER]
+                description:
+                  type: string
+                  maxLength: 1000
+                evidencePhotos:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 5
+      responses:
+        '201':
+          description: Dispute created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dispute'
+
+  /disputes/{disputeId}/counter-evidence:
+    post:
+      tags: [Disputes]
+      summary: Submit counter-evidence
+      description: Other party submits counter-evidence for dispute
+      parameters:
+        - name: disputeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [counterDescription]
+              properties:
+                counterDescription:
+                  type: string
+                  maxLength: 1000
+                counterEvidence:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 5
+      responses:
+        '200':
+          description: Counter-evidence submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dispute'
+
+  # ==================== ADMIN ENDPOINTS ====================
+
+  /admin/login:
+    post:
+      tags: [Admin]
+      summary: Admin login
+      description: Admin authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Admin login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  admin:
+                    $ref: '#/components/schemas/Admin'
+
+  /admin/dashboard:
+    get:
+      tags: [Admin]
+      summary: Get dashboard metrics
+      description: Returns platform metrics for admin dashboard
+      responses:
+        '200':
+          description: Dashboard metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardMetrics'
+
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: Search users
+      description: Search and filter users
+      parameters:
+        - name: q
+          in: query
+          description: Search query (email or name)
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by account status
+          required: false
+          schema:
+            type: string
+            enum: [ACTIVE, SUSPENDED, DELETED]
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserAdmin'
+
+  /admin/users/{userId}/suspend:
+    post:
+      tags: [Admin]
+      summary: Suspend user
+      description: Suspends user account
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: User suspended
+
+  /admin/disputes:
+    get:
+      tags: [Admin]
+      summary: Get all disputes
+      description: Returns all disputes with filtering
+      parameters:
+        - name: status
+          in: query
+          description: Filter by status
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, RESOLVED, REJECTED]
+      responses:
+        '200':
+          description: List of disputes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  disputes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Dispute'
+
+  /admin/disputes/{disputeId}/resolve:
+    post:
+      tags: [Admin]
+      summary: Resolve dispute
+      description: Admin resolves dispute with binding decision
+      parameters:
+        - name: disputeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outcome]
+              properties:
+                outcome:
+                  type: string
+                  enum: [REFUND_TO_BORROWER, KEEP_WITH_LENDER, SPLIT_50_50]
+                notes:
+                  type: string
+                  maxLength: 1000
+      responses:
+        '200':
+          description: Dispute resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dispute'
+
+  # ==================== USER PROFILE ENDPOINTS ====================
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      description: Returns authenticated user's profile
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+    put:
+      tags: [Users]
+      summary: Update user profile
+      description: Updates authenticated user's profile
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                profilePhoto:
+                  type: string
+                  format: binary
+                location:
+                  type: object
+                  properties:
+                    lat:
+                      type: number
+                    lng:
+                      type: number
+                    address:
+                      type: string
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+  /users/{userId}:
+    get:
+      tags: [Users]
+      summary: Get user public profile
+      description: Returns public profile of a user
+      security: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User public profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPublic'
+
+# ==================== COMPONENTS ====================
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        name:
+          type: string
+        profilePhoto:
+          type: string
+        reputationScore:
+          type: number
+          format: float
+        emailVerified:
+          type: boolean
+        phoneVerified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    UserProfile:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            location:
+              type: object
+              properties:
+                lat:
+                  type: number
+                lng:
+                  type: number
+                address:
+                  type: string
+
+    UserPublic:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        profilePhoto:
+          type: string
+        reputationScore:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    UserAdmin:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            accountStatus:
+              type: string
+              enum: [ACTIVE, SUSPENDED, DELETED]
+            suspendedReason:
+              type: string
+            totalListings:
+              type: integer
+            totalTransactions:
+              type: integer
+
+    CreateBookListing:
+      type: object
+      required: [title, author, condition, rentalType, rentalDuration, images, location]
+      properties:
+        title:
+          type: string
+        author:
+          type: string
+        description:
+          type: string
+        condition:
+          type: string
+          enum: [NEW, LIKE_NEW, GOOD, ACCEPTABLE]
+        rentalType:
+          type: string
+          enum: [FREE, PAID]
+        rentalPrice:
+          type: number
+        depositAmount:
+          type: number
+        rentalDuration:
+          type: integer
+        images:
+          type: array
+          items:
+            type: string
+          minItems: 2
+          maxItems: 5
+        location:
+          type: object
+          required: [lat, lng, address]
+          properties:
+            lat:
+              type: number
+            lng:
+              type: number
+            address:
+              type: string
+
+    UpdateBookListing:
+      type: object
+      properties:
+        title:
+          type: string
+        author:
+          type: string
+        description:
+          type: string
+        condition:
+          type: string
+          enum: [NEW, LIKE_NEW, GOOD, ACCEPTABLE]
+        depositAmount:
+          type: number
+        rentalDuration:
+          type: integer
+        available:
+          type: boolean
+
+    BookListing:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        author:
+          type: string
+        description:
+          type: string
+        condition:
+          type: string
+        rentalType:
+          type: string
+        rentalPrice:
+          type: number
+        depositAmount:
+          type: number
+        rentalDuration:
+          type: integer
+        images:
+          type: array
+          items:
+            type: string
+        location:
+          type: object
+        available:
+          type: boolean
+        lenderId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    BookListingDetail:
+      allOf:
+        - $ref: '#/components/schemas/BookListing'
+        - type: object
+          properties:
+            lender:
+              $ref: '#/components/schemas/UserPublic'
+
+    BookSearchResult:
+      allOf:
+        - $ref: '#/components/schemas/BookListing'
+        - type: object
+          properties:
+            lenderName:
+              type: string
+            lenderRating:
+              type: number
+            distance:
+              type: number
+              description: Distance in kilometers
+
+    BorrowRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        borrowerId:
+          type: string
+        lenderId:
+          type: string
+        bookListingId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+        rejectionReason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        bookListing:
+          $ref: '#/components/schemas/BookListing'
+        borrower:
+          $ref: '#/components/schemas/UserPublic'
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+        borrowerId:
+          type: string
+        lenderId:
+          type: string
+        bookListingId:
+          type: string
+        status:
+          type: string
+          enum: [INITIATED, DEPOSIT_PAID, BOOK_RECEIVED, BOOK_RETURNED, COMPLETED, DISPUTED, CANCELLED]
+        depositAmount:
+          type: number
+        rentalAmount:
+          type: number
+        platformFee:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    TransactionDetail:
+      allOf:
+        - $ref: '#/components/schemas/Transaction'
+        - type: object
+          properties:
+            borrower:
+              $ref: '#/components/schemas/UserPublic'
+            lender:
+              $ref: '#/components/schemas/UserPublic'
+            bookListing:
+              $ref: '#/components/schemas/BookListing'
+            beforeHandoverPhoto:
+              type: string
+            afterReturnPhoto:
+              type: string
+
+    Review:
+      type: object
+      properties:
+        id:
+          type: string
+        reviewerId:
+          type: string
+        revieweeId:
+          type: string
+        transactionId:
+          type: string
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        reviewer:
+          $ref: '#/components/schemas/UserPublic'
+
+    Dispute:
+      type: object
+      properties:
+        id:
+          type: string
+        transactionId:
+          type: string
+        raisedById:
+          type: string
+        reason:
+          type: string
+          enum: [DAMAGE, NOT_RETURNED, WRONG_CONDITION, OTHER]
+        description:
+          type: string
+        evidencePhotos:
+          type: array
+          items:
+            type: string
+        counterDescription:
+          type: string
+        counterEvidence:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [PENDING, RESOLVED, REJECTED]
+        resolutionOutcome:
+          type: string
+          enum: [REFUND_TO_BORROWER, KEEP_WITH_LENDER, SPLIT_50_50]
+        resolutionNotes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+
+    Admin:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [ADMIN, SUPER_ADMIN]
+
+    DashboardMetrics:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        activeLenders:
+          type: integer
+        totalBooks:
+          type: integer
+        transactionsThisMonth:
+          type: integer
+        successfulReturnsPercentage:
+          type: number
+        disputeRate:
+          type: number
+        repeatBorrowerRate:
+          type: number
+        avgTransactionValue:
+          type: number
+        revenueThisMonth:
+          type: number
+        topCategories:
+          type: array
+          items:
+            type: string
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
