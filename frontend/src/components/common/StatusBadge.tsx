@@ -19,6 +19,9 @@ const STYLES: Record<string, string> = {
   RETURNED: 'bg-primary-100 text-primary-800',
   COMPLETED: 'bg-primary-800 text-white',
   DISPUTED: 'bg-red-100 text-red-700',
+  // accounts
+  SUSPENDED: 'bg-red-100 text-red-700',
+  DELETED: 'bg-stone-100 text-stone-600',
   // payments
   PAID: 'bg-primary-100 text-primary-800',
   FAILED: 'bg-red-100 text-red-700',
