@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Inbox, Star, Clock, Check, X, ArrowRight } from 'lucide-react'
 import { requestsApi } from '../api/requests'
 import { Button } from '../components/common/Button'
-import { Card } from '../components/common/Card'
 import { Input } from '../components/common/Input'
-import { Header } from '../components/layout/Header'
+import { PageShell } from '../components/layout/PageShell'
+import { PageTitle } from '../components/common/PageTitle'
+import { EmptyState } from '../components/common/EmptyState'
+import { StatusBadge } from '../components/common/StatusBadge'
 
 export const IncomingRequestsPage = () => {
   const navigate = useNavigate()
@@ -51,214 +54,182 @@ export const IncomingRequestsPage = () => {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading requests...</p>
-        </div>
-      </div>
-    )
-  }
-
   const pendingRequests = requests?.filter((r) => r.status === 'PENDING') || []
   const processedRequests = requests?.filter((r) => r.status !== 'PENDING') || []
 
   return (
-    <div className="min-h-screen bg-paper">
-      {/* Header */}
-      <Header />
-      <div className="bg-white border-b border-stone-200/70">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-primary-900">Incoming Requests</h1>
-            <Button variant="secondary" onClick={() => navigate('/dashboard')}>
-              Dashboard
-            </Button>
-          </div>
-        </div>
-      </div>
+    <PageShell>
+      <PageTitle
+        title="Incoming requests"
+        subtitle="Readers who want to borrow your books."
+      />
 
-      {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Pending Requests */}
-        {pendingRequests.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Pending Requests ({pendingRequests.length})
-            </h2>
-            <div className="space-y-4">
-              {pendingRequests.map((request) => (
-                <Card key={request.id}>
-                  <div className="flex flex-col md:flex-row gap-4">
-                    {/* Book Image */}
+      {isLoading ? (
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="card animate-pulse flex gap-5">
+              <div className="w-24 h-32 bg-stone-100 rounded-xl shrink-0" />
+              <div className="flex-1 py-2">
+                <div className="h-4 bg-stone-100 rounded w-1/3 mb-3" />
+                <div className="h-3 bg-stone-100 rounded w-1/4 mb-3" />
+                <div className="h-3 bg-stone-100 rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : !requests || requests.length === 0 ? (
+        <EmptyState
+          icon={Inbox}
+          title="No incoming requests"
+          body="When someone nearby asks to borrow one of your books, it will show up here."
+        />
+      ) : (
+        <>
+          {/* Pending */}
+          {pendingRequests.length > 0 && (
+            <div className="mb-10">
+              <h2 className="font-display text-xl font-semibold text-ink mb-4">
+                Waiting for you ({pendingRequests.length})
+              </h2>
+              <div className="space-y-4">
+                {pendingRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    className="card !border-accent-300/70 flex flex-col md:flex-row gap-5"
+                  >
                     <img
                       src={request.bookListing.images[0]}
                       alt={request.bookListing.title}
-                      className="w-full md:w-32 h-32 object-cover rounded-lg"
+                      className="w-full md:w-24 h-40 md:h-32 object-cover rounded-xl shrink-0"
                     />
 
-                    {/* Details */}
-                    <div className="flex-1 space-y-2">
-                      <h3 className="text-lg font-semibold text-gray-900">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-ink">
                         {request.bookListing.title}
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className="mt-0.5 text-sm text-stone-500">
                         by {request.bookListing.author}
                       </p>
 
-                      <div className="flex items-center gap-3">
+                      <div className="mt-3 flex items-center gap-3">
                         {request.borrower.profilePhoto ? (
                           <img
                             src={request.borrower.profilePhoto}
                             alt={request.borrower.name || 'Borrower'}
-                            className="w-8 h-8 rounded-full object-cover"
+                            className="w-9 h-9 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
-                            <span className="text-primary-600 text-sm font-semibold">
+                          <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center">
+                            <span className="text-primary-700 text-sm font-semibold">
                               {(request.borrower.name || 'B')[0].toUpperCase()}
                             </span>
                           </div>
                         )}
                         <div>
-                          <p className="text-sm font-medium">
+                          <p className="text-sm font-medium text-ink">
                             {request.borrower.name || 'Anonymous'}
                           </p>
-                          <p className="text-xs text-gray-600">
-                            ⭐ {request.borrower.reputationScore.toFixed(1)} rating
+                          <p className="flex items-center gap-1 text-xs text-stone-500">
+                            <Star className="h-3 w-3 text-accent-500 fill-accent-400" />
+                            {request.borrower.reputationScore.toFixed(1)} rating
                           </p>
                         </div>
+                        <p className="ml-auto flex items-center gap-1.5 text-xs text-stone-400">
+                          <Clock className="h-3.5 w-3.5" />
+                          {new Date(request.createdAt).toLocaleDateString()}
+                        </p>
                       </div>
 
-                      <p className="text-sm text-gray-500">
-                        Requested on {new Date(request.createdAt).toLocaleDateString()}
-                      </p>
-
-                      {/* Rejection Reason Input */}
-                      <Input
-                        placeholder="Reason for rejection (if rejecting)"
-                        value={rejectionReason[request.id] || ''}
-                        onChange={(e) =>
-                          setRejectionReason({
-                            ...rejectionReason,
-                            [request.id]: e.target.value,
-                          })
-                        }
-                      />
+                      <div className="mt-3">
+                        <Input
+                          placeholder="Reason for rejection (only needed if rejecting)"
+                          value={rejectionReason[request.id] || ''}
+                          onChange={(e) =>
+                            setRejectionReason({
+                              ...rejectionReason,
+                              [request.id]: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex flex-col justify-center gap-2">
+                    <div className="flex md:flex-col justify-end md:justify-center gap-2 shrink-0">
                       <Button
                         onClick={() => handleApprove(request.id)}
                         isLoading={approveMutation.isPending}
                       >
-                        Approve
+                        <Check className="h-4 w-4" /> Approve
                       </Button>
                       <Button
                         variant="danger"
                         onClick={() => handleReject(request.id)}
                         isLoading={rejectMutation.isPending}
                       >
-                        Reject
+                        <X className="h-4 w-4" /> Reject
                       </Button>
                     </div>
                   </div>
-                </Card>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Processed Requests */}
-        {processedRequests.length > 0 && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Processed Requests ({processedRequests.length})
-            </h2>
-            <div className="space-y-4">
-              {processedRequests.map((request) => (
-                <Card key={request.id}>
-                  <div className="flex flex-col md:flex-row gap-4">
+          {/* Processed */}
+          {processedRequests.length > 0 && (
+            <div>
+              <h2 className="font-display text-xl font-semibold text-ink mb-4">
+                Earlier ({processedRequests.length})
+              </h2>
+              <div className="space-y-4">
+                {processedRequests.map((request) => (
+                  <div key={request.id} className="card flex flex-col md:flex-row gap-5">
                     <img
                       src={request.bookListing.images[0]}
                       alt={request.bookListing.title}
-                      className="w-full md:w-32 h-32 object-cover rounded-lg"
+                      className="w-full md:w-24 h-40 md:h-32 object-cover rounded-xl shrink-0"
                     />
 
-                    <div className="flex-1 space-y-2">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {request.bookListing.title}
-                      </h3>
-                      <p className="text-sm text-gray-600">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h3 className="font-semibold text-ink">
+                          {request.bookListing.title}
+                        </h3>
+                        <StatusBadge status={request.status} />
+                      </div>
+                      <p className="mt-0.5 text-sm text-stone-500">
                         Borrower: {request.borrower.name || 'Anonymous'}
                       </p>
 
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                          request.status === 'APPROVED'
-                            ? 'bg-green-100 text-green-800'
-                            : request.status === 'REJECTED'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {request.status}
-                      </span>
-
                       {request.status === 'REJECTED' && request.rejectionReason && (
-                        <p className="text-sm text-gray-600">
+                        <p className="mt-2 text-sm text-stone-500">
                           Reason: {request.rejectionReason}
                         </p>
                       )}
 
                       {request.status === 'APPROVED' && request.transaction && (
-                        <div className="mt-3">
-                          <p className="text-sm text-gray-600">
-                            Payment Status:{' '}
-                            <span
-                              className={
-                                request.transaction.paymentStatus === 'COMPLETED'
-                                  ? 'text-green-600 font-medium'
-                                  : 'text-yellow-600 font-medium'
-                              }
-                            >
-                              {request.transaction.paymentStatus}
-                            </span>
-                          </p>
+                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                          <StatusBadge status={request.transaction.paymentStatus} />
                           {request.transaction.paymentStatus === 'COMPLETED' && (
                             <Button
                               variant="secondary"
-                              onClick={() => navigate(`/transactions/${request.transaction.id}`)}
-                              className="mt-2"
+                              onClick={() =>
+                                navigate(`/transactions/${request.transaction.id}`)
+                              }
                             >
-                              View Transaction
+                              View loan <ArrowRight className="h-4 w-4" />
                             </Button>
                           )}
                         </div>
                       )}
                     </div>
                   </div>
-                </Card>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-
-        {(!requests || requests.length === 0) && (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">📭</div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-              No incoming requests
-            </h2>
-            <p className="text-gray-600">
-              When someone requests to borrow your books, they'll appear here
-            </p>
-          </div>
-        )}
-      </main>
-    </div>
+          )}
+        </>
+      )}
+    </PageShell>
   )
 }

@@ -1,12 +1,21 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
+import { ArrowLeft, Star, SearchX, Ban } from 'lucide-react'
 import { transactionsApi } from '../api/transactions'
 import { reviewsApi } from '../api/reviews'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/common/Button'
-import { Card } from '../components/common/Card'
-import { Header } from '../components/layout/Header'
+import { PageShell } from '../components/layout/PageShell'
+import { EmptyState } from '../components/common/EmptyState'
+
+const RATING_LABELS: Record<number, string> = {
+  1: 'Poor',
+  2: 'Fair',
+  3: 'Good',
+  4: 'Very good',
+  5: 'Excellent',
+}
 
 export const CreateReviewPage = () => {
   const { transactionId } = useParams<{ transactionId: string }>()
@@ -58,39 +67,42 @@ export const CreateReviewPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <PageShell>
+        <div className="max-w-2xl mx-auto animate-pulse space-y-6">
+          <div className="h-8 bg-stone-100 rounded w-1/3" />
+          <div className="h-96 bg-stone-100 rounded-2xl" />
         </div>
-      </div>
+      </PageShell>
     )
   }
 
   if (!transaction) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Transaction not found</h2>
-          <Button onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
-        </div>
-      </div>
+      <PageShell>
+        <EmptyState
+          icon={SearchX}
+          title="Loan not found"
+          body="This transaction doesn't exist or you don't have access to it."
+          action={<Button onClick={() => navigate('/dashboard')}>Back to dashboard</Button>}
+        />
+      </PageShell>
     )
   }
 
   if (canReviewData && !canReviewData.canReview) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card>
-          <div className="text-center py-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Cannot Review</h2>
-            <p className="text-gray-600 mb-6">{canReviewData.reason}</p>
+      <PageShell>
+        <EmptyState
+          icon={Ban}
+          title="Can't review this loan"
+          body={canReviewData.reason || 'This loan is not eligible for a review right now.'}
+          action={
             <Button onClick={() => navigate(`/transactions/${transactionId}`)}>
-              Back to Transaction
+              Back to loan
             </Button>
-          </div>
-        </Card>
-      </div>
+          }
+        />
+      </PageShell>
     )
   }
 
@@ -98,75 +110,50 @@ export const CreateReviewPage = () => {
   const reviewee = isBorrower ? transaction.lender : transaction.borrower
 
   return (
-    <div className="min-h-screen bg-paper">
-      {/* Header */}
-      <Header />
-      <div className="bg-white border-b border-stone-200/70">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Button variant="secondary" onClick={() => navigate(`/transactions/${transactionId}`)}>
-            ← Back to Transaction
-          </Button>
-        </div>
-      </div>
+    <PageShell>
+      <div className="max-w-2xl mx-auto">
+        <button
+          onClick={() => navigate(`/transactions/${transactionId}`)}
+          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 hover:text-primary-800 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to loan
+        </button>
 
-      {/* Content */}
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Card>
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Leave a Review</h1>
+        <h1 className="font-display text-4xl font-semibold text-primary-950 mb-8">
+          Leave a review
+        </h1>
 
-          {/* Book Info */}
-          <div className="mb-6">
-            <div className="flex gap-4">
-              <img
-                src={transaction.bookListing.images[0]}
-                alt={transaction.bookListing.title}
-                className="w-24 h-24 object-cover rounded-lg"
-              />
-              <div>
-                <h3 className="font-semibold text-gray-900">{transaction.bookListing.title}</h3>
-                <p className="text-sm text-gray-600">by {transaction.bookListing.author}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Reviewee Info */}
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">
-              You are reviewing {isBorrower ? 'the lender' : 'the borrower'}:
-            </h3>
-            <div className="flex items-center gap-3">
-              {reviewee.profilePhoto ? (
-                <img
-                  src={reviewee.profilePhoto}
-                  alt={reviewee.name}
-                  className="w-12 h-12 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
-                  <span className="text-primary-600 font-semibold text-lg">
-                    {(reviewee.name || 'U')[0].toUpperCase()}
-                  </span>
-                </div>
-              )}
-              <div>
-                <p className="font-medium">{reviewee.name || 'Anonymous'}</p>
-                <p className="text-sm text-gray-600">⭐ {reviewee.reputationScore.toFixed(1)} rating</p>
-              </div>
+        <div className="card !p-7">
+          {/* Context */}
+          <div className="flex gap-4 pb-6 border-b border-stone-100">
+            <img
+              src={transaction.bookListing.images[0]}
+              alt={transaction.bookListing.title}
+              className="w-16 h-24 object-cover rounded-xl shrink-0"
+            />
+            <div>
+              <p className="font-display text-lg font-semibold text-ink">
+                {transaction.bookListing.title}
+              </p>
+              <p className="text-sm text-stone-500">by {transaction.bookListing.author}</p>
+              <p className="mt-2 text-sm text-stone-500">
+                Reviewing {isBorrower ? 'the lender' : 'the borrower'}:{' '}
+                <span className="font-medium text-ink">{reviewee.name || 'Anonymous'}</span>
+              </p>
             </div>
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl my-6 text-sm">
               {error}
             </div>
           )}
 
-          {/* Review Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6 pt-6">
             {/* Star Rating */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Rating *</label>
-              <div className="flex gap-2">
+              <label className="label">How was the experience?</label>
+              <div className="flex gap-1.5">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
@@ -174,57 +161,47 @@ export const CreateReviewPage = () => {
                     onClick={() => setRating(star)}
                     onMouseEnter={() => setHoveredRating(star)}
                     onMouseLeave={() => setHoveredRating(0)}
-                    className="text-4xl focus:outline-none transition-colors"
+                    className="focus:outline-none transition-transform hover:scale-110"
+                    aria-label={`${star} star${star > 1 ? 's' : ''}`}
                   >
-                    <span
+                    <Star
                       className={
                         star <= (hoveredRating || rating)
-                          ? 'text-yellow-400'
-                          : 'text-gray-300'
+                          ? 'h-9 w-9 text-accent-500 fill-accent-400'
+                          : 'h-9 w-9 text-stone-200 fill-stone-100'
                       }
-                    >
-                      ★
-                    </span>
+                    />
                   </button>
                 ))}
               </div>
               {rating > 0 && (
-                <p className="text-sm text-gray-600 mt-1">
-                  {rating === 1 && 'Poor'}
-                  {rating === 2 && 'Fair'}
-                  {rating === 3 && 'Good'}
-                  {rating === 4 && 'Very Good'}
-                  {rating === 5 && 'Excellent'}
-                </p>
+                <p className="text-sm text-stone-500 mt-2">{RATING_LABELS[rating]}</p>
               )}
             </div>
 
             {/* Comment */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Comment (Optional)
-              </label>
+              <label className="label">Comment (optional)</label>
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder={`Share your experience with ${reviewee.name || 'this user'}...`}
+                className="input min-h-[100px]"
+                placeholder={`Share your experience with ${reviewee.name || 'this reader'}…`}
               />
             </div>
 
-            {/* Submit */}
             <Button
               type="submit"
               isLoading={createReviewMutation.isPending}
               disabled={rating === 0}
               className="w-full"
             >
-              Submit Review
+              Submit review
             </Button>
           </form>
-        </Card>
-      </main>
-    </div>
+        </div>
+      </div>
+    </PageShell>
   )
 }

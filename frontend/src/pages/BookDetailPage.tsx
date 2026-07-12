@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
+import { ArrowLeft, Star, BookOpen, BookX, ArrowRight } from 'lucide-react'
+import clsx from 'clsx'
 import { booksApi } from '../api/books'
 import { requestsApi } from '../api/requests'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/common/Button'
-import { Card } from '../components/common/Card'
-import { Header } from '../components/layout/Header'
+import { PageShell } from '../components/layout/PageShell'
+import { EmptyState } from '../components/common/EmptyState'
+import { formatMoney } from '../lib/format'
 
 export const BookDetailPage = () => {
   const { id } = useParams<{ id: string }>()
@@ -42,68 +45,66 @@ export const BookDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading book details...</p>
+      <PageShell>
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 animate-pulse">
+          <div className="h-96 bg-stone-100 rounded-2xl" />
+          <div className="py-2">
+            <div className="h-8 bg-stone-100 rounded w-2/3 mb-4" />
+            <div className="h-4 bg-stone-100 rounded w-1/3 mb-8" />
+            <div className="h-40 bg-stone-100 rounded-2xl" />
+          </div>
         </div>
-      </div>
+      </PageShell>
     )
   }
 
   if (!book) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Book not found</h2>
-          <Button onClick={() => navigate('/search')}>Back to Search</Button>
-        </div>
-      </div>
+      <PageShell>
+        <EmptyState
+          icon={BookX}
+          title="Book not found"
+          body="This listing may have been removed by its owner."
+          action={<Button onClick={() => navigate('/search')}>Back to browse</Button>}
+        />
+      </PageShell>
     )
   }
 
   const isOwnBook = user?.userId === book.lender.id
 
   return (
-    <div className="min-h-screen bg-paper">
-      {/* Header */}
-      <Header />
-      <div className="bg-white border-b border-stone-200/70">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Button variant="secondary" onClick={() => navigate('/search')}>
-            ← Back to Search
-          </Button>
-        </div>
-      </div>
+    <PageShell>
+      <div className="max-w-5xl mx-auto">
+        <button
+          onClick={() => navigate('/search')}
+          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 hover:text-primary-800 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to browse
+        </button>
 
-      {/* Content */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6">
-            {success}
-            <Button
-              variant="secondary"
-              onClick={() => navigate('/my-requests')}
-              className="ml-4"
-            >
-              View My Requests
+          <div className="bg-primary-50 border border-primary-200 text-primary-800 px-4 py-3 rounded-xl mb-6 text-sm flex flex-wrap items-center justify-between gap-3">
+            <span>{success}</span>
+            <Button variant="secondary" onClick={() => navigate('/my-requests')}>
+              View my requests <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           {/* Images */}
           <div>
             <img
               src={book.images[selectedImage]}
               alt={book.title}
-              className="w-full h-96 object-cover rounded-lg mb-4"
+              className="w-full h-96 object-cover rounded-2xl shadow-card mb-3"
             />
 
             {book.images.length > 1 && (
@@ -113,11 +114,12 @@ export const BookDetailPage = () => {
                     key={index}
                     src={image}
                     alt={`${book.title} ${index + 1}`}
-                    className={`w-full h-20 object-cover rounded-lg cursor-pointer border-2 ${
+                    className={clsx(
+                      'w-full h-20 object-cover rounded-xl cursor-pointer border-2 transition-colors',
                       selectedImage === index
                         ? 'border-primary-600'
-                        : 'border-gray-200'
-                    }`}
+                        : 'border-transparent hover:border-stone-300'
+                    )}
                     onClick={() => setSelectedImage(index)}
                   />
                 ))}
@@ -128,92 +130,91 @@ export const BookDetailPage = () => {
           {/* Details */}
           <div className="space-y-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{book.title}</h1>
-              <p className="text-xl text-gray-600">by {book.author}</p>
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                {book.rentalType === 'FREE' ? (
+                  <span className="badge bg-primary-800 text-white">Free to borrow</span>
+                ) : (
+                  <span className="badge bg-accent-400 text-primary-950">
+                    {formatMoney(book.rentalPrice!)} / loan
+                  </span>
+                )}
+                <span
+                  className={clsx(
+                    'badge',
+                    book.available
+                      ? 'bg-primary-100 text-primary-800'
+                      : 'bg-stone-100 text-stone-600'
+                  )}
+                >
+                  {book.available ? 'Available' : 'Unavailable'}
+                </span>
+              </div>
+              <h1 className="font-display text-4xl font-semibold text-primary-950">
+                {book.title}
+              </h1>
+              <p className="mt-2 text-lg text-stone-500">by {book.author}</p>
             </div>
 
             {book.description && (
-              <p className="text-gray-700">{book.description}</p>
+              <p className="text-stone-600 leading-relaxed">{book.description}</p>
             )}
 
-            <Card>
-              <div className="space-y-3">
-                <h3 className="font-semibold text-gray-900">Book Details</h3>
-
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Condition:</span>
-                  <span className="font-medium">{book.condition.replace('_', ' ')}</span>
+            <div className="card">
+              <h3 className="font-semibold text-ink mb-4">Loan details</h3>
+              <dl className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <dt className="text-stone-500">Condition</dt>
+                  <dd className="font-medium text-ink capitalize">
+                    {book.condition.replace('_', ' ').toLowerCase()}
+                  </dd>
                 </div>
-
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Rental Type:</span>
-                  <span className="font-medium">
-                    {book.rentalType === 'FREE' ? (
-                      <span className="text-green-600">FREE</span>
-                    ) : (
-                      `$${book.rentalPrice} for ${book.rentalDuration} days`
-                    )}
-                  </span>
+                <div className="flex justify-between">
+                  <dt className="text-stone-500">Loan period</dt>
+                  <dd className="font-medium text-ink">{book.rentalDuration} days</dd>
                 </div>
-
                 {book.rentalType === 'PAID' && book.depositAmount && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Deposit Required:</span>
-                    <span className="font-medium">${book.depositAmount}</span>
+                  <div className="flex justify-between">
+                    <dt className="text-stone-500">Refundable deposit</dt>
+                    <dd className="font-medium text-ink">{formatMoney(book.depositAmount)}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+
+            <div className="card">
+              <h3 className="font-semibold text-ink mb-4">Shared by</h3>
+              <div className="flex items-center gap-3">
+                {book.lender.profilePhoto ? (
+                  <img
+                    src={book.lender.profilePhoto}
+                    alt={book.lender.name || 'Lender'}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
+                    <span className="text-primary-700 font-semibold text-lg">
+                      {(book.lender.name || 'L')[0].toUpperCase()}
+                    </span>
                   </div>
                 )}
 
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Duration:</span>
-                  <span className="font-medium">{book.rentalDuration} days</span>
-                </div>
-
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Availability:</span>
-                  <span className={`font-medium ${book.available ? 'text-green-600' : 'text-red-600'}`}>
-                    {book.available ? 'Available' : 'Not Available'}
-                  </span>
+                <div>
+                  <p className="font-medium text-ink">{book.lender.name || 'Anonymous'}</p>
+                  <p className="flex items-center gap-1 text-sm text-stone-500">
+                    <Star className="h-3.5 w-3.5 text-accent-500 fill-accent-400" />
+                    {book.lender.reputationScore.toFixed(1)} rating
+                  </p>
                 </div>
               </div>
-            </Card>
+            </div>
 
-            <Card>
-              <div className="space-y-3">
-                <h3 className="font-semibold text-gray-900">Lender Information</h3>
-
-                <div className="flex items-center gap-3">
-                  {book.lender.profilePhoto ? (
-                    <img
-                      src={book.lender.profilePhoto}
-                      alt={book.lender.name || 'Lender'}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
-                      <span className="text-primary-600 font-semibold text-lg">
-                        {(book.lender.name || 'L')[0].toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-
-                  <div>
-                    <p className="font-medium">{book.lender.name || 'Anonymous'}</p>
-                    <p className="text-sm text-gray-600">
-                      ⭐ {book.lender.reputationScore.toFixed(1)} rating
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Action Button */}
             {isOwnBook ? (
-              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg">
-                This is your own book listing
+              <div className="bg-primary-50 border border-primary-200 text-primary-800 px-4 py-3 rounded-xl text-sm">
+                This is your own listing.
               </div>
             ) : !book.available ? (
-              <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg">
-                This book is currently unavailable
+              <div className="bg-accent-50 border border-accent-200 text-stone-700 px-4 py-3 rounded-xl text-sm">
+                This book is currently out with another reader.
               </div>
             ) : success ? null : (
               <Button
@@ -221,12 +222,12 @@ export const BookDetailPage = () => {
                 isLoading={requestMutation.isPending}
                 className="w-full"
               >
-                📖 Request to Borrow
+                <BookOpen className="h-4 w-4" /> Request to borrow
               </Button>
             )}
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </PageShell>
   )
 }

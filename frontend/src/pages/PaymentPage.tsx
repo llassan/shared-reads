@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { ArrowLeft, CreditCard, Star, CheckCircle2, ShieldCheck, SearchX } from 'lucide-react'
 import { paymentsApi } from '../api/payments'
-import { requestsApi } from '../api/requests'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/common/Button'
-import { Card } from '../components/common/Card'
-import { Header } from '../components/layout/Header'
+import { PageShell } from '../components/layout/PageShell'
+import { EmptyState } from '../components/common/EmptyState'
+import { formatMoney } from '../lib/format'
 
 // Razorpay types
 declare global {
@@ -46,14 +47,12 @@ export const PaymentPage = () => {
   const [orderDetails, setOrderDetails] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch transaction payment details
   const { data: paymentData, isLoading } = useQuery({
     queryKey: ['transactionPayment', transactionId],
     queryFn: () => paymentsApi.getTransactionPayment(transactionId!),
     enabled: !!transactionId,
   })
 
-  // Create payment order mutation
   const createOrderMutation = useMutation({
     mutationFn: () => paymentsApi.createOrder({ transactionId: transactionId! }),
     onSuccess: (data) => {
@@ -65,7 +64,6 @@ export const PaymentPage = () => {
     },
   })
 
-  // Verify payment mutation
   const verifyPaymentMutation = useMutation({
     mutationFn: (paymentData: {
       razorpayOrderId: string
@@ -77,7 +75,6 @@ export const PaymentPage = () => {
         ...paymentData,
       }),
     onSuccess: () => {
-      // Redirect to transaction details or success page
       navigate(`/transactions/${transactionId}?payment=success`)
     },
     onError: (err: any) => {
@@ -111,7 +108,6 @@ export const PaymentPage = () => {
       description: 'Book Rental Payment',
       order_id: orderDetails.order.id,
       handler: (response: RazorpaySuccessResponse) => {
-        // Verify payment on backend
         verifyPaymentMutation.mutate({
           razorpayOrderId: response.razorpay_order_id,
           razorpayPaymentId: response.razorpay_payment_id,
@@ -124,7 +120,7 @@ export const PaymentPage = () => {
         contact: user?.phone || '',
       },
       theme: {
-        color: '#7C3AED', // primary-600
+        color: '#224334', // primary-800
       },
     }
 
@@ -134,12 +130,12 @@ export const PaymentPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading payment details...</p>
+      <PageShell>
+        <div className="max-w-3xl mx-auto animate-pulse space-y-6">
+          <div className="h-8 bg-stone-100 rounded w-1/3" />
+          <div className="h-96 bg-stone-100 rounded-2xl" />
         </div>
-      </div>
+      </PageShell>
     )
   }
 
@@ -147,30 +143,31 @@ export const PaymentPage = () => {
 
   if (!transaction) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Transaction not found</h2>
-          <Button onClick={() => navigate('/my-requests')}>Back to Requests</Button>
-        </div>
-      </div>
+      <PageShell>
+        <EmptyState
+          icon={SearchX}
+          title="Transaction not found"
+          body="This payment link doesn't match any of your loans."
+          action={<Button onClick={() => navigate('/my-requests')}>Back to requests</Button>}
+        />
+      </PageShell>
     )
   }
 
-  // Check if payment is already completed
   if (transaction.paymentStatus === 'COMPLETED') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card>
-          <div className="text-center py-8">
-            <div className="text-6xl mb-4">✅</div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Payment Already Completed</h2>
-            <p className="text-gray-600 mb-6">This transaction has already been paid for.</p>
+      <PageShell>
+        <EmptyState
+          icon={CheckCircle2}
+          title="Payment already completed"
+          body="This loan has already been paid for — you're all set."
+          action={
             <Button onClick={() => navigate(`/transactions/${transactionId}`)}>
-              View Transaction
+              View loan
             </Button>
-          </div>
-        </Card>
-      </div>
+          }
+        />
+      </PageShell>
     )
   }
 
@@ -180,107 +177,86 @@ export const PaymentPage = () => {
     (Number(transaction.platformFee) || 0)
 
   return (
-    <div className="min-h-screen bg-paper">
-      {/* Header */}
-      <Header />
-      <div className="bg-white border-b border-stone-200/70">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Button variant="secondary" onClick={() => navigate('/my-requests')}>
-            ← Back to Requests
-          </Button>
-        </div>
-      </div>
+    <PageShell>
+      <div className="max-w-2xl mx-auto">
+        <button
+          onClick={() => navigate('/my-requests')}
+          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 hover:text-primary-800 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to requests
+        </button>
 
-      {/* Content */}
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="font-display text-4xl font-semibold text-primary-950 mb-8">
+          Complete payment
+        </h1>
+
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm">
             {error}
           </div>
         )}
 
-        <Card>
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Complete Payment</h1>
-
-          {/* Book Details */}
-          <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-2">Book Details</h3>
-            <div className="flex gap-4">
-              <img
-                src={transaction.bookListing.images[0]}
-                alt={transaction.bookListing.title}
-                className="w-24 h-24 object-cover rounded-lg"
-              />
-              <div>
-                <p className="font-medium">{transaction.bookListing.title}</p>
-                <p className="text-sm text-gray-600">by {transaction.bookListing.author}</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  Duration: {transaction.bookListing.rentalDuration} days
-                </p>
-              </div>
+        <div className="card !p-7 space-y-6">
+          {/* Book */}
+          <div className="flex gap-4">
+            <img
+              src={transaction.bookListing.images[0]}
+              alt={transaction.bookListing.title}
+              className="w-20 h-28 object-cover rounded-xl shrink-0"
+            />
+            <div>
+              <p className="font-display text-lg font-semibold text-ink">
+                {transaction.bookListing.title}
+              </p>
+              <p className="text-sm text-stone-500">by {transaction.bookListing.author}</p>
+              <p className="text-sm text-stone-500 mt-1">
+                {transaction.bookListing.rentalDuration}-day loan
+              </p>
+              <p className="mt-2 flex items-center gap-1.5 text-sm text-stone-500">
+                from {transaction.lender.name || 'Anonymous'}
+                <Star className="h-3.5 w-3.5 text-accent-500 fill-accent-400" />
+                {transaction.lender.reputationScore.toFixed(1)}
+              </p>
             </div>
           </div>
 
-          {/* Lender Details */}
-          <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-2">Lender</h3>
-            <div className="flex items-center gap-3">
-              {transaction.lender.profilePhoto ? (
-                <img
-                  src={transaction.lender.profilePhoto}
-                  alt={transaction.lender.name}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                  <span className="text-primary-600 font-semibold">
-                    {(transaction.lender.name || 'L')[0].toUpperCase()}
-                  </span>
-                </div>
-              )}
-              <div>
-                <p className="font-medium">{transaction.lender.name || 'Anonymous'}</p>
-                <p className="text-sm text-gray-600">
-                  ⭐ {transaction.lender.reputationScore.toFixed(1)} rating
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Payment Breakdown */}
-          <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-3">Payment Breakdown</h3>
-            <div className="space-y-2 text-sm">
+          {/* Breakdown */}
+          <div className="border-t border-stone-100 pt-6">
+            <dl className="space-y-2.5 text-sm">
               {transaction.depositAmount > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Security Deposit:</span>
-                  <span className="font-medium">${Number(transaction.depositAmount).toFixed(2)}</span>
+                  <dt className="text-stone-500">Refundable deposit</dt>
+                  <dd className="font-medium text-ink">
+                    {formatMoney(Number(transaction.depositAmount).toFixed(2))}
+                  </dd>
                 </div>
               )}
               {transaction.rentalAmount > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Rental Fee:</span>
-                  <span className="font-medium">${Number(transaction.rentalAmount).toFixed(2)}</span>
+                  <dt className="text-stone-500">Loan fee</dt>
+                  <dd className="font-medium text-ink">
+                    {formatMoney(Number(transaction.rentalAmount).toFixed(2))}
+                  </dd>
                 </div>
               )}
               {transaction.platformFee > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Platform Fee (15%):</span>
-                  <span className="font-medium">${Number(transaction.platformFee).toFixed(2)}</span>
+                  <dt className="text-stone-500">Platform fee (15%)</dt>
+                  <dd className="font-medium text-ink">
+                    {formatMoney(Number(transaction.platformFee).toFixed(2))}
+                  </dd>
                 </div>
               )}
-              <div className="border-t pt-2 flex justify-between font-semibold text-base">
-                <span>Total Amount:</span>
-                <span className="text-primary-600">${totalAmount.toFixed(2)}</span>
+              <div className="border-t border-stone-100 pt-2.5 flex justify-between font-semibold text-base">
+                <dt className="text-ink">Total</dt>
+                <dd className="text-primary-800">{formatMoney(totalAmount.toFixed(2))}</dd>
               </div>
-            </div>
+            </dl>
           </div>
 
-          {/* Payment Button */}
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg mb-4">
-            <p className="text-sm">
-              💡 Your security deposit will be refunded after you return the book in good condition.
-            </p>
+          <div className="flex items-start gap-3 bg-primary-50 border border-primary-200 text-primary-900 px-4 py-3 rounded-xl text-sm">
+            <ShieldCheck className="h-4.5 w-4.5 h-[18px] w-[18px] mt-0.5 shrink-0 text-primary-700" />
+            Your deposit is fully refunded when the book comes back in good condition.
           </div>
 
           <Button
@@ -288,10 +264,11 @@ export const PaymentPage = () => {
             isLoading={createOrderMutation.isPending || verifyPaymentMutation.isPending}
             className="w-full"
           >
-            {orderDetails ? '💳 Pay Now' : 'Create Payment Order'}
+            <CreditCard className="h-4 w-4" />
+            {orderDetails ? 'Pay now' : 'Continue to payment'}
           </Button>
-        </Card>
-      </main>
-    </div>
+        </div>
+      </div>
+    </PageShell>
   )
 }

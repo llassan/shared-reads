@@ -1,9 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { BookPlus, LibraryBig } from 'lucide-react'
 import { booksApi } from '../api/books'
 import { Button } from '../components/common/Button'
 import { BookCard } from '../components/books/BookCard'
-import { Header } from '../components/layout/Header'
+import { PageShell } from '../components/layout/PageShell'
+import { PageTitle } from '../components/common/PageTitle'
+import { EmptyState } from '../components/common/EmptyState'
 
 export const MyListingsPage = () => {
   const navigate = useNavigate()
@@ -40,74 +43,58 @@ export const MyListingsPage = () => {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your listings...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-paper">
-      {/* Header */}
-      <Header />
-      <div className="bg-white border-b border-stone-200/70">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-primary-900">My Listings</h1>
-            <div className="flex gap-2">
-              <Button onClick={() => navigate('/list-book')}>
-                + List a Book
-              </Button>
-              <Button variant="secondary" onClick={() => navigate('/dashboard')}>
-                Dashboard
-              </Button>
+    <PageShell>
+      <PageTitle
+        title="My shelf"
+        subtitle="The books you're sharing with your neighborhood."
+        actions={
+          <Button onClick={() => navigate('/list-book')}>
+            <BookPlus className="h-4 w-4" /> List a book
+          </Button>
+        }
+      />
+
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="card animate-pulse">
+              <div className="h-48 bg-stone-100 rounded-xl mb-4" />
+              <div className="h-4 bg-stone-100 rounded w-3/4 mb-2" />
+              <div className="h-3 bg-stone-100 rounded w-1/2" />
             </div>
-          </div>
+          ))}
         </div>
-      </div>
-
-      {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {!listings || listings.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">📚</div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-              No listings yet
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Start sharing books with your community!
-            </p>
+      ) : !listings || listings.length === 0 ? (
+        <EmptyState
+          icon={LibraryBig}
+          title="Your shelf is empty"
+          body="List the books you've finished reading and put them back into circulation."
+          action={
             <Button onClick={() => navigate('/list-book')}>
-              List Your First Book
+              <BookPlus className="h-4 w-4" /> List your first book
             </Button>
-          </div>
-        ) : (
-          <>
-            <div className="mb-6">
-              <p className="text-gray-600">
-                {listings.length} {listings.length === 1 ? 'listing' : 'listings'}
-              </p>
-            </div>
+          }
+        />
+      ) : (
+        <>
+          <p className="mb-5 text-sm text-stone-500">
+            {listings.length} {listings.length === 1 ? 'book' : 'books'} on your shelf
+          </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {listings.map((book) => (
-                <BookCard
-                  key={book.id}
-                  book={book}
-                  showActions
-                  onToggleAvailability={() => handleToggleAvailability(book.id)}
-                  onDelete={() => handleDelete(book.id)}
-                />
-              ))}
-            </div>
-          </>
-        )}
-      </main>
-    </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {listings.map((book) => (
+              <BookCard
+                key={book.id}
+                book={book}
+                showActions
+                onToggleAvailability={() => handleToggleAvailability(book.id)}
+                onDelete={() => handleDelete(book.id)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </PageShell>
   )
 }

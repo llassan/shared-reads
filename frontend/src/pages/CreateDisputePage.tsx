@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
+import { ArrowLeft, AlertTriangle, X, SearchX } from 'lucide-react'
 import { transactionsApi } from '../api/transactions'
 import { disputesApi } from '../api/disputes'
 import { Button } from '../components/common/Button'
-import { Card } from '../components/common/Card'
-import { Header } from '../components/layout/Header'
+import { PageShell } from '../components/layout/PageShell'
+import { EmptyState } from '../components/common/EmptyState'
 
 export const CreateDisputePage = () => {
   const { transactionId } = useParams<{ transactionId: string }>()
@@ -42,7 +43,6 @@ export const CreateDisputePage = () => {
 
     setEvidenceFiles([...evidenceFiles, ...files])
 
-    // Create previews
     files.forEach((file) => {
       const reader = new FileReader()
       reader.onloadend = () => {
@@ -80,111 +80,102 @@ export const CreateDisputePage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <PageShell>
+        <div className="max-w-2xl mx-auto animate-pulse space-y-6">
+          <div className="h-8 bg-stone-100 rounded w-1/3" />
+          <div className="h-96 bg-stone-100 rounded-2xl" />
         </div>
-      </div>
+      </PageShell>
     )
   }
 
   if (!transaction) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Transaction not found</h2>
-          <Button onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
-        </div>
-      </div>
+      <PageShell>
+        <EmptyState
+          icon={SearchX}
+          title="Loan not found"
+          body="This transaction doesn't exist or you don't have access to it."
+          action={<Button onClick={() => navigate('/dashboard')}>Back to dashboard</Button>}
+        />
+      </PageShell>
     )
   }
 
   return (
-    <div className="min-h-screen bg-paper">
-      {/* Header */}
-      <Header />
-      <div className="bg-white border-b border-stone-200/70">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Button variant="secondary" onClick={() => navigate(`/transactions/${transactionId}`)}>
-            ← Back to Transaction
-          </Button>
-        </div>
-      </div>
+    <PageShell>
+      <div className="max-w-2xl mx-auto">
+        <button
+          onClick={() => navigate(`/transactions/${transactionId}`)}
+          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 hover:text-primary-800 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to loan
+        </button>
 
-      {/* Content */}
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Card>
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Raise a Dispute</h1>
+        <h1 className="font-display text-4xl font-semibold text-primary-950 mb-8">
+          Raise a dispute
+        </h1>
 
-          {/* Transaction Info */}
-          <div className="mb-6 pb-6 border-b">
-            <div className="flex gap-4">
-              <img
-                src={transaction.bookListing.images[0]}
-                alt={transaction.bookListing.title}
-                className="w-20 h-20 object-cover rounded-lg"
-              />
-              <div>
-                <h3 className="font-semibold text-gray-900">{transaction.bookListing.title}</h3>
-                <p className="text-sm text-gray-600">by {transaction.bookListing.author}</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Transaction ID: {transaction.id.slice(0, 8)}...
-                </p>
-              </div>
+        <div className="card !p-7">
+          {/* Context */}
+          <div className="flex gap-4 pb-6 border-b border-stone-100">
+            <img
+              src={transaction.bookListing.images[0]}
+              alt={transaction.bookListing.title}
+              className="w-16 h-24 object-cover rounded-xl shrink-0"
+            />
+            <div>
+              <p className="font-display text-lg font-semibold text-ink">
+                {transaction.bookListing.title}
+              </p>
+              <p className="text-sm text-stone-500">by {transaction.bookListing.author}</p>
+              <p className="text-xs text-stone-400 mt-1">
+                Loan ID: {transaction.id.slice(0, 8)}…
+              </p>
             </div>
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl my-6 text-sm">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Reason */}
+          <form onSubmit={handleSubmit} className="space-y-6 pt-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Issue Type *
-              </label>
+              <label className="label">What went wrong?</label>
               <select
                 value={reason}
                 onChange={(e) => setReason(e.target.value as any)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="input"
               >
-                <option value="DAMAGE">Book Damaged</option>
-                <option value="NOT_RETURNED">Book Not Returned</option>
-                <option value="WRONG_CONDITION">Wrong Condition</option>
-                <option value="OTHER">Other Issue</option>
+                <option value="DAMAGE">Book damaged</option>
+                <option value="NOT_RETURNED">Book not returned</option>
+                <option value="WRONG_CONDITION">Condition didn't match the listing</option>
+                <option value="OTHER">Other issue</option>
               </select>
             </div>
 
-            {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description * (min 20 characters)
-              </label>
+              <label className="label">Description (min 20 characters)</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={6}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Describe the issue in detail. Include what happened, when it happened, and any relevant details..."
+                className="input min-h-[140px]"
+                placeholder="Describe the issue in detail — what happened, when, and anything else that helps the reviewer understand."
               />
-              <p className="text-sm text-gray-500 mt-1">{description.length} characters</p>
+              <p className="text-xs text-stone-400 mt-1">{description.length} characters</p>
             </div>
 
-            {/* Evidence Photos */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Evidence Photos (Optional, max 5)
-              </label>
+              <label className="label">Evidence photos (optional, max 5)</label>
               <input
                 type="file"
                 accept="image/*"
                 multiple
                 onChange={handleFileChange}
-                className="w-full"
+                className="w-full text-sm"
                 disabled={evidenceFiles.length >= 5}
               />
               {evidencePreviews.length > 0 && (
@@ -194,14 +185,15 @@ export const CreateDisputePage = () => {
                       <img
                         src={preview}
                         alt={`Evidence ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg"
+                        className="w-full h-24 object-cover rounded-xl"
                       />
                       <button
                         type="button"
                         onClick={() => removeEvidence(index)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
+                        aria-label="Remove photo"
+                        className="absolute top-1.5 right-1.5 bg-ink/80 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center transition-colors"
                       >
-                        ×
+                        <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   ))}
@@ -209,24 +201,23 @@ export const CreateDisputePage = () => {
               )}
             </div>
 
-            {/* Warning */}
-            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg text-sm">
-              ⚠️ Please ensure all information is accurate. False disputes may result in account
-              suspension. An admin will review your case and make a fair decision.
+            <div className="flex items-start gap-3 bg-accent-50 border border-accent-200 text-stone-700 px-4 py-3 rounded-xl text-sm">
+              <AlertTriangle className="h-4.5 w-4.5 h-[18px] w-[18px] mt-0.5 shrink-0 text-accent-600" />
+              Please make sure everything is accurate — false disputes can lead to account
+              suspension. An admin reviews every case and decides fairly.
             </div>
 
-            {/* Submit */}
             <Button
               type="submit"
               isLoading={createDisputeMutation.isPending}
               disabled={!description.trim() || description.trim().length < 20}
               className="w-full"
             >
-              Submit Dispute
+              Submit dispute
             </Button>
           </form>
-        </Card>
-      </main>
-    </div>
+        </div>
+      </div>
+    </PageShell>
   )
 }

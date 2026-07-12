@@ -1,12 +1,34 @@
 import { useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  Camera,
+  CheckCircle2,
+  CreditCard,
+  FileWarning,
+  Star,
+  SearchX,
+} from 'lucide-react'
 import { transactionsApi } from '../api/transactions'
 import { reviewsApi } from '../api/reviews'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/common/Button'
-import { Card } from '../components/common/Card'
-import { Header } from '../components/layout/Header'
+import { PageShell } from '../components/layout/PageShell'
+import { PageTitle } from '../components/common/PageTitle'
+import { EmptyState } from '../components/common/EmptyState'
+import { StatusBadge } from '../components/common/StatusBadge'
+import { formatMoney } from '../lib/format'
+
+const Avatar = ({ photo, name }: { photo?: string | null; name?: string | null }) =>
+  photo ? (
+    <img src={photo} alt={name || ''} className="w-10 h-10 rounded-full object-cover" />
+  ) : (
+    <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+      <span className="text-primary-700 font-semibold">
+        {(name || '?')[0].toUpperCase()}
+      </span>
+    </div>
+  )
 
 export const TransactionDetailPage = () => {
   const { transactionId } = useParams<{ transactionId: string }>()
@@ -99,94 +121,82 @@ export const TransactionDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading transaction details...</p>
+      <PageShell>
+        <div className="max-w-4xl mx-auto animate-pulse space-y-6">
+          <div className="h-8 bg-stone-100 rounded w-1/3" />
+          <div className="h-64 bg-stone-100 rounded-2xl" />
+          <div className="h-40 bg-stone-100 rounded-2xl" />
         </div>
-      </div>
+      </PageShell>
     )
   }
 
   if (!transaction) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Transaction not found</h2>
-          <Button onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
-        </div>
-      </div>
+      <PageShell>
+        <EmptyState
+          icon={SearchX}
+          title="Loan not found"
+          body="This transaction doesn't exist or you don't have access to it."
+          action={<Button onClick={() => navigate('/dashboard')}>Back to dashboard</Button>}
+        />
+      </PageShell>
     )
   }
 
   const isBorrower = user?.userId === transaction.borrowerId
   const isLender = user?.userId === transaction.lenderId
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'INITIATED':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'DEPOSIT_PAID':
-        return 'bg-blue-100 text-blue-800'
-      case 'BOOK_RECEIVED':
-        return 'bg-purple-100 text-purple-800'
-      case 'BOOK_RETURNED':
-        return 'bg-orange-100 text-orange-800'
-      case 'COMPLETED':
-        return 'bg-green-100 text-green-800'
-      case 'DISPUTED':
-        return 'bg-red-100 text-red-800'
-      case 'CANCELLED':
-        return 'bg-gray-100 text-gray-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
   const totalAmount =
     (Number(transaction.depositAmount) || 0) +
     (Number(transaction.rentalAmount) || 0) +
     (Number(transaction.platformFee) || 0)
 
-  return (
-    <div className="min-h-screen bg-paper">
-      {/* Header */}
-      <Header />
-      <div className="bg-white border-b border-stone-200/70">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-primary-900">Transaction Details</h1>
-            <Button variant="secondary" onClick={() => navigate('/dashboard')}>
-              Dashboard
-            </Button>
-          </div>
-        </div>
-      </div>
+  const timeline = [
+    { label: 'Loan created', at: transaction.createdAt },
+    { label: 'Deposit paid', at: transaction.depositPaidAt },
+    { label: 'Book handed over', at: transaction.handoverAt },
+    { label: 'Book returned', at: transaction.returnedAt },
+    { label: 'Loan completed', at: transaction.completedAt },
+  ].filter((t) => t.at)
 
-      {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  return (
+    <PageShell>
+      <div className="max-w-4xl mx-auto">
+        <PageTitle
+          title="Loan details"
+          actions={<StatusBadge status={transaction.status} />}
+        />
+
         {paymentSuccess && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6">
-            ✅ Payment completed successfully! The lender will be notified to arrange book handover.
+          <div className="bg-primary-50 border border-primary-200 text-primary-800 px-4 py-3 rounded-xl mb-6 text-sm flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            Payment completed successfully! The lender will be notified to arrange the handoff.
           </div>
         )}
 
         {reviewSuccess && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6">
-            ✅ Review submitted successfully! Thank you for your feedback.
+          <div className="bg-primary-50 border border-primary-200 text-primary-800 px-4 py-3 rounded-xl mb-6 text-sm flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            Review submitted — thank you for keeping the community honest.
           </div>
         )}
 
-        {/* Photo Upload Modal */}
+        {/* Photo Upload Panel */}
         {showPhotoUpload && (
-          <Card>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {uploadType === 'handover' ? 'Confirm Book Handover' : 'Confirm Book Return'}
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
+          <div className="card !border-accent-300/70 mb-6">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="h-9 w-9 rounded-lg bg-accent-100 text-accent-700 flex items-center justify-center">
+                <Camera className="h-4.5 w-4.5 h-[18px] w-[18px]" />
+              </span>
+              <h3 className="font-display text-xl font-semibold text-ink">
+                {uploadType === 'handover' ? 'Confirm handoff' : 'Confirm return'}
+              </h3>
+            </div>
+            <p className="text-sm text-stone-500 mb-4">
               {uploadType === 'handover'
-                ? 'Take a photo of the book before handing it over to the borrower. This serves as evidence of the book\'s condition.'
-                : 'Take a photo of the book when returning it to the lender. This serves as evidence of the book\'s condition upon return.'}
+                ? "Take a photo of the book before handing it over — it's the condition evidence for both of you."
+                : "Take a photo of the book as you return it — it's the condition evidence for both of you."}
             </p>
 
             <input
@@ -194,7 +204,7 @@ export const TransactionDetailPage = () => {
               accept="image/*"
               capture="environment"
               onChange={handlePhotoChange}
-              className="mb-4"
+              className="mb-4 text-sm"
             />
 
             {photoPreview && (
@@ -202,7 +212,7 @@ export const TransactionDetailPage = () => {
                 <img
                   src={photoPreview}
                   alt="Preview"
-                  className="w-full max-h-64 object-contain rounded-lg"
+                  className="w-full max-h-64 object-contain rounded-xl"
                 />
               </div>
             )}
@@ -213,185 +223,148 @@ export const TransactionDetailPage = () => {
                 isLoading={handoverMutation.isPending || returnMutation.isPending}
                 disabled={!photoFile}
               >
-                Confirm {uploadType === 'handover' ? 'Handover' : 'Return'}
+                Confirm {uploadType === 'handover' ? 'handoff' : 'return'}
               </Button>
-              <Button variant="secondary" onClick={() => {
-                setShowPhotoUpload(false)
-                setPhotoFile(null)
-                setPhotoPreview(null)
-              }}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowPhotoUpload(false)
+                  setPhotoFile(null)
+                  setPhotoPreview(null)
+                }}
+              >
                 Cancel
               </Button>
             </div>
-          </Card>
+          </div>
         )}
 
-        {/* Status Card */}
-        <Card>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Status</h2>
-            <span
-              className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                transaction.status
-              )}`}
-            >
-              {transaction.status.replace('_', ' ')}
-            </span>
-          </div>
-
-          {/* Book Details */}
-          <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-3">Book</h3>
-            <div className="flex gap-4">
+        <div className="space-y-6">
+          {/* Book */}
+          <div className="card">
+            <div className="flex gap-5">
               <img
                 src={transaction.bookListing.images[0]}
                 alt={transaction.bookListing.title}
-                className="w-32 h-32 object-cover rounded-lg"
+                className="w-24 h-32 object-cover rounded-xl shrink-0"
               />
-              <div className="flex-1">
-                <h4 className="text-lg font-medium text-gray-900">
+              <div className="flex-1 min-w-0">
+                <h2 className="font-display text-xl font-semibold text-ink">
                   {transaction.bookListing.title}
-                </h4>
-                <p className="text-gray-600">by {transaction.bookListing.author}</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Duration: {transaction.bookListing.rentalDuration} days
-                </p>
-                <p className="text-sm text-gray-500">Condition: {transaction.bookListing.condition}</p>
+                </h2>
+                <p className="text-stone-500">by {transaction.bookListing.author}</p>
+                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-stone-500">
+                  <span>{transaction.bookListing.rentalDuration} days</span>
+                  <span className="capitalize">
+                    {transaction.bookListing.condition.replace('_', ' ').toLowerCase()}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Parties */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            {/* Borrower */}
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-2">Borrower</h3>
+            {/* Parties */}
+            <div className="mt-6 pt-6 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="flex items-center gap-3">
-                {transaction.borrower.profilePhoto ? (
-                  <img
-                    src={transaction.borrower.profilePhoto}
-                    alt={transaction.borrower.name}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                    <span className="text-primary-600 font-semibold">
-                      {(transaction.borrower.name || 'B')[0].toUpperCase()}
-                    </span>
-                  </div>
-                )}
+                <Avatar
+                  photo={transaction.borrower.profilePhoto}
+                  name={transaction.borrower.name}
+                />
                 <div>
-                  <p className="font-medium">
+                  <p className="text-xs uppercase tracking-wide text-stone-400 font-semibold">
+                    Borrower
+                  </p>
+                  <p className="font-medium text-ink">
                     {transaction.borrower.name || 'Anonymous'}
-                    {isBorrower && <span className="text-sm text-gray-500"> (You)</span>}
+                    {isBorrower && <span className="text-stone-400 font-normal"> (you)</span>}
                   </p>
-                  <p className="text-sm text-gray-600">
-                    ⭐ {transaction.borrower.reputationScore.toFixed(1)}
+                  <p className="flex items-center gap-1 text-xs text-stone-500">
+                    <Star className="h-3 w-3 text-accent-500 fill-accent-400" />
+                    {transaction.borrower.reputationScore.toFixed(1)}
                   </p>
                 </div>
               </div>
-            </div>
-
-            {/* Lender */}
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-2">Lender</h3>
               <div className="flex items-center gap-3">
-                {transaction.lender.profilePhoto ? (
-                  <img
-                    src={transaction.lender.profilePhoto}
-                    alt={transaction.lender.name}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                    <span className="text-primary-600 font-semibold">
-                      {(transaction.lender.name || 'L')[0].toUpperCase()}
-                    </span>
-                  </div>
-                )}
+                <Avatar
+                  photo={transaction.lender.profilePhoto}
+                  name={transaction.lender.name}
+                />
                 <div>
-                  <p className="font-medium">
-                    {transaction.lender.name || 'Anonymous'}
-                    {isLender && <span className="text-sm text-gray-500"> (You)</span>}
+                  <p className="text-xs uppercase tracking-wide text-stone-400 font-semibold">
+                    Lender
                   </p>
-                  <p className="text-sm text-gray-600">
-                    ⭐ {transaction.lender.reputationScore.toFixed(1)}
+                  <p className="font-medium text-ink">
+                    {transaction.lender.name || 'Anonymous'}
+                    {isLender && <span className="text-stone-400 font-normal"> (you)</span>}
+                  </p>
+                  <p className="flex items-center gap-1 text-xs text-stone-500">
+                    <Star className="h-3 w-3 text-accent-500 fill-accent-400" />
+                    {transaction.lender.reputationScore.toFixed(1)}
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Payment Details */}
-          <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-3">Payment Details</h3>
-            <div className="space-y-2 text-sm">
+          {/* Payment */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-ink">Payment</h3>
+              <StatusBadge status={transaction.paymentStatus} />
+            </div>
+            <dl className="space-y-2.5 text-sm">
               {transaction.depositAmount > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Security Deposit:</span>
-                  <span className="font-medium">${Number(transaction.depositAmount).toFixed(2)}</span>
+                  <dt className="text-stone-500">Refundable deposit</dt>
+                  <dd className="font-medium text-ink">
+                    {formatMoney(Number(transaction.depositAmount).toFixed(2))}
+                  </dd>
                 </div>
               )}
               {transaction.rentalAmount > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Rental Fee:</span>
-                  <span className="font-medium">${Number(transaction.rentalAmount).toFixed(2)}</span>
+                  <dt className="text-stone-500">Loan fee</dt>
+                  <dd className="font-medium text-ink">
+                    {formatMoney(Number(transaction.rentalAmount).toFixed(2))}
+                  </dd>
                 </div>
               )}
               {transaction.platformFee > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Platform Fee:</span>
-                  <span className="font-medium">${Number(transaction.platformFee).toFixed(2)}</span>
+                  <dt className="text-stone-500">Platform fee</dt>
+                  <dd className="font-medium text-ink">
+                    {formatMoney(Number(transaction.platformFee).toFixed(2))}
+                  </dd>
                 </div>
               )}
-              <div className="border-t pt-2 flex justify-between font-semibold">
-                <span>Total Paid:</span>
-                <span className="text-primary-600">${totalAmount.toFixed(2)}</span>
+              <div className="border-t border-stone-100 pt-2.5 flex justify-between font-semibold">
+                <dt className="text-ink">Total</dt>
+                <dd className="text-primary-800">{formatMoney(totalAmount.toFixed(2))}</dd>
               </div>
-            </div>
-
-            <div className="mt-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Payment Status:</span>
-                <span
-                  className={`font-medium ${
-                    transaction.paymentStatus === 'COMPLETED' ? 'text-green-600' : 'text-yellow-600'
-                  }`}
-                >
-                  {transaction.paymentStatus}
-                </span>
-              </div>
-              {transaction.depositPaidAt && (
-                <div className="flex justify-between text-sm mt-1">
-                  <span className="text-gray-600">Paid At:</span>
-                  <span>{new Date(transaction.depositPaidAt).toLocaleString()}</span>
-                </div>
-              )}
-            </div>
+            </dl>
           </div>
 
           {/* Evidence Photos */}
           {(transaction.beforeHandoverPhoto || transaction.afterReturnPhoto) && (
-            <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3">Evidence Photos</h3>
+            <div className="card">
+              <h3 className="font-semibold text-ink mb-4">Condition evidence</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {transaction.beforeHandoverPhoto && (
                   <div>
-                    <p className="text-sm text-gray-600 mb-2">Before Handover:</p>
+                    <p className="text-sm text-stone-500 mb-2">At handoff</p>
                     <img
                       src={transaction.beforeHandoverPhoto}
                       alt="Before handover"
-                      className="w-full h-48 object-cover rounded-lg"
+                      className="w-full h-48 object-cover rounded-xl"
                     />
                   </div>
                 )}
                 {transaction.afterReturnPhoto && (
                   <div>
-                    <p className="text-sm text-gray-600 mb-2">After Return:</p>
+                    <p className="text-sm text-stone-500 mb-2">At return</p>
                     <img
                       src={transaction.afterReturnPhoto}
                       alt="After return"
-                      className="w-full h-48 object-cover rounded-lg"
+                      className="w-full h-48 object-cover rounded-xl"
                     />
                   </div>
                 )}
@@ -401,42 +374,37 @@ export const TransactionDetailPage = () => {
 
           {/* Reviews */}
           {reviews && reviews.length > 0 && (
-            <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3">Reviews</h3>
-              <div className="space-y-4">
+            <div className="card">
+              <h3 className="font-semibold text-ink mb-4">Reviews</h3>
+              <div className="space-y-5">
                 {reviews.map((review: any) => (
-                  <div key={review.id} className="border-l-4 border-primary-200 pl-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      {review.reviewer.profilePhoto ? (
-                        <img
-                          src={review.reviewer.profilePhoto}
-                          alt={review.reviewer.name}
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
-                          <span className="text-primary-600 text-xs font-semibold">
-                            {(review.reviewer.name || 'U')[0].toUpperCase()}
-                          </span>
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-sm font-medium">{review.reviewer.name || 'Anonymous'}</p>
-                        <div className="flex items-center gap-1">
-                          <span className="text-yellow-400">{'★'.repeat(review.rating)}</span>
-                          <span className="text-gray-300">{'★'.repeat(5 - review.rating)}</span>
-                          <span className="text-xs text-gray-500 ml-1">
-                            ({review.rating}/5)
-                          </span>
-                        </div>
+                  <div key={review.id} className="flex gap-3">
+                    <Avatar photo={review.reviewer.profilePhoto} name={review.reviewer.name} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium text-ink">
+                          {review.reviewer.name || 'Anonymous'}
+                        </p>
+                        <span className="flex items-center gap-0.5">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={
+                                i < review.rating
+                                  ? 'h-3.5 w-3.5 text-accent-500 fill-accent-400'
+                                  : 'h-3.5 w-3.5 text-stone-200 fill-stone-200'
+                              }
+                            />
+                          ))}
+                        </span>
+                        <span className="text-xs text-stone-400">
+                          {new Date(review.createdAt).toLocaleDateString()}
+                        </span>
                       </div>
+                      {review.comment && (
+                        <p className="mt-1 text-sm text-stone-600">{review.comment}</p>
+                      )}
                     </div>
-                    {review.comment && (
-                      <p className="text-sm text-gray-700 mt-2">{review.comment}</p>
-                    )}
-                    <p className="text-xs text-gray-500 mt-1">
-                      {new Date(review.createdAt).toLocaleDateString()}
-                    </p>
                   </div>
                 ))}
               </div>
@@ -444,51 +412,30 @@ export const TransactionDetailPage = () => {
           )}
 
           {/* Timeline */}
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-3">Timeline</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Transaction Created:</span>
-                <span>{new Date(transaction.createdAt).toLocaleString()}</span>
-              </div>
-              {transaction.depositPaidAt && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Deposit Paid:</span>
-                  <span>{new Date(transaction.depositPaidAt).toLocaleString()}</span>
-                </div>
-              )}
-              {transaction.handoverAt && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Book Handed Over:</span>
-                  <span>{new Date(transaction.handoverAt).toLocaleString()}</span>
-                </div>
-              )}
-              {transaction.returnedAt && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Book Returned:</span>
-                  <span>{new Date(transaction.returnedAt).toLocaleString()}</span>
-                </div>
-              )}
-              {transaction.completedAt && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Transaction Completed:</span>
-                  <span>{new Date(transaction.completedAt).toLocaleString()}</span>
-                </div>
-              )}
-            </div>
+          <div className="card">
+            <h3 className="font-semibold text-ink mb-4">Timeline</h3>
+            <ol className="relative border-l border-stone-200 ml-2 space-y-5">
+              {timeline.map((t) => (
+                <li key={t.label} className="pl-5 relative">
+                  <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 rounded-full bg-primary-600" />
+                  <p className="text-sm font-medium text-ink">{t.label}</p>
+                  <p className="text-xs text-stone-400">
+                    {new Date(t.at as string).toLocaleString()}
+                  </p>
+                </li>
+              ))}
+            </ol>
           </div>
-        </Card>
+        </div>
 
         {/* Actions */}
-        <div className="mt-6 space-y-4">
-          {/* Borrower: Pay deposit */}
+        <div className="mt-6 space-y-3">
           {isBorrower && transaction.status === 'INITIATED' && transaction.paymentStatus === 'PENDING' && (
             <Button onClick={() => navigate(`/payments/${transactionId}`)} className="w-full">
-              Complete Payment
+              <CreditCard className="h-4 w-4" /> Complete payment
             </Button>
           )}
 
-          {/* Lender: Confirm handover */}
           {isLender && transaction.status === 'DEPOSIT_PAID' && !showPhotoUpload && (
             <Button
               onClick={() => {
@@ -497,11 +444,10 @@ export const TransactionDetailPage = () => {
               }}
               className="w-full"
             >
-              Confirm Book Handover
+              <Camera className="h-4 w-4" /> Confirm book handoff
             </Button>
           )}
 
-          {/* Borrower: Confirm return */}
           {isBorrower && transaction.status === 'BOOK_RECEIVED' && !showPhotoUpload && (
             <Button
               onClick={() => {
@@ -510,11 +456,10 @@ export const TransactionDetailPage = () => {
               }}
               className="w-full"
             >
-              Confirm Book Return
+              <Camera className="h-4 w-4" /> Confirm book return
             </Button>
           )}
 
-          {/* Lender: Complete transaction */}
           {isLender && transaction.status === 'BOOK_RETURNED' && (
             <div className="space-y-2">
               <Button
@@ -522,36 +467,39 @@ export const TransactionDetailPage = () => {
                 isLoading={completeMutation.isPending}
                 className="w-full"
               >
-                Complete Transaction (Book Returned in Good Condition)
+                <CheckCircle2 className="h-4 w-4" /> Complete loan — book returned in good condition
               </Button>
-              <Button variant="danger" onClick={() => navigate(`/disputes/create/${transactionId}`)} className="w-full">
-                Report Issue / Raise Dispute
+              <Button
+                variant="danger"
+                onClick={() => navigate(`/disputes/create/${transactionId}`)}
+                className="w-full"
+              >
+                <FileWarning className="h-4 w-4" /> Report an issue / raise a dispute
               </Button>
             </div>
           )}
 
-          {/* Completed */}
           {transaction.status === 'COMPLETED' && (
             <>
-              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-                ✅ Transaction completed successfully!
-                {isBorrower && ' Thank you for returning the book in good condition.'}
-                {isLender && ' The book is now available for rent again.'}
+              <div className="bg-primary-50 border border-primary-200 text-primary-800 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                Loan completed successfully!
+                {isBorrower && ' Thanks for returning the book in good condition.'}
+                {isLender && ' Your book is back on the shelf and available again.'}
               </div>
 
-              {/* Leave a Review */}
               {canReviewData?.canReview && (
                 <Button
                   onClick={() => navigate(`/reviews/create/${transactionId}`)}
-                  className="w-full mt-4"
+                  className="w-full"
                 >
-                  ⭐ Leave a Review
+                  <Star className="h-4 w-4" /> Leave a review
                 </Button>
               )}
             </>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </PageShell>
   )
 }
