@@ -2,7 +2,7 @@ import { Response } from 'express'
 import { AuthRequest } from '../middleware/auth'
 import { asyncHandler } from '../middleware/asyncHandler'
 import prisma from '../config/database'
-import * as cloudinaryService from '../services/cloudinaryService'
+import * as storageService from '../services/storageService'
 
 /**
  * Create a dispute for a transaction
@@ -56,7 +56,7 @@ export const createDispute = asyncHandler(async (req: AuthRequest, res: Response
   if (evidencePhotos && Array.isArray(evidencePhotos)) {
     try {
       const uploadPromises = evidencePhotos.map((photo: string) =>
-        cloudinaryService.uploadImage(photo, 'dispute-evidence')
+        storageService.uploadImage(photo, 'dispute-evidence')
       )
       const results = await Promise.all(uploadPromises)
       uploadedPhotos = results.map((result) => result.secureUrl)
@@ -156,7 +156,7 @@ export const addCounterEvidence = asyncHandler(async (req: AuthRequest, res: Res
   if (counterEvidence && Array.isArray(counterEvidence)) {
     try {
       const uploadPromises = counterEvidence.map((photo: string) =>
-        cloudinaryService.uploadImage(photo, 'dispute-counter-evidence')
+        storageService.uploadImage(photo, 'dispute-counter-evidence')
       )
       const results = await Promise.all(uploadPromises)
       uploadedPhotos = results.map((result) => result.secureUrl)

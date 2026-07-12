@@ -7,7 +7,7 @@ import {
   uploadMultipleImages,
   deleteMultipleImages,
   extractPublicId,
-} from '../services/cloudinaryService';
+} from '../services/storageService';
 import {
   ValidationError,
   NotFoundError,

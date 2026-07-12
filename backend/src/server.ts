@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -25,6 +26,16 @@ app.use(cookieParser());
 
 // Rate limiting
 app.use('/api', generalLimiter);
+
+// Self-hosted images: nginx serves /uploads in production; this covers
+// development and acts as a fallback.
+app.use(
+  '/uploads',
+  express.static(process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'), {
+    immutable: true,
+    maxAge: '30d',
+  })
+);
 
 // Health check endpoint
 app.get('/health', async (_req, res) => {

@@ -15,10 +15,6 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRY: z.string().default('15m'),
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
 
-  CLOUDINARY_CLOUD_NAME: z.string(),
-  CLOUDINARY_API_KEY: z.string(),
-  CLOUDINARY_API_SECRET: z.string(),
-
   RAZORPAY_KEY_ID: z.string(),
   RAZORPAY_KEY_SECRET: z.string(),
   RAZORPAY_WEBHOOK_SECRET: z.string(),
@@ -56,12 +52,6 @@ export const config = {
     refreshSecret: env.JWT_REFRESH_SECRET,
     accessExpiry: env.JWT_ACCESS_EXPIRY,
     refreshExpiry: env.JWT_REFRESH_EXPIRY,
-  },
-
-  cloudinary: {
-    cloudName: env.CLOUDINARY_CLOUD_NAME,
-    apiKey: env.CLOUDINARY_API_KEY,
-    apiSecret: env.CLOUDINARY_API_SECRET,
   },
 
   razorpay: {

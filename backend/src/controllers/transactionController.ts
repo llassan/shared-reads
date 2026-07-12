@@ -2,7 +2,7 @@ import { Response } from 'express'
 import { AuthRequest } from '../middleware/auth'
 import { asyncHandler } from '../middleware/asyncHandler'
 import prisma from '../config/database'
-import * as cloudinaryService from '../services/cloudinaryService'
+import * as storageService from '../services/storageService'
 
 /**
  * Get transaction by ID
@@ -118,7 +118,7 @@ export const confirmHandover = asyncHandler(async (req: AuthRequest, res: Respon
   // Upload photo to Cloudinary
   let photoUrl: string
   try {
-    const uploadResult = await cloudinaryService.uploadImage(photoBase64, 'transaction-evidence')
+    const uploadResult = await storageService.uploadImage(photoBase64, 'transaction-evidence')
     photoUrl = uploadResult.secureUrl
   } catch (error) {
     console.error('Failed to upload handover photo:', error)
@@ -192,7 +192,7 @@ export const confirmReturn = asyncHandler(async (req: AuthRequest, res: Response
   // Upload photo to Cloudinary
   let photoUrl: string
   try {
-    const uploadResult = await cloudinaryService.uploadImage(photoBase64, 'transaction-evidence')
+    const uploadResult = await storageService.uploadImage(photoBase64, 'transaction-evidence')
     photoUrl = uploadResult.secureUrl
   } catch (error) {
     console.error('Failed to upload return photo:', error)

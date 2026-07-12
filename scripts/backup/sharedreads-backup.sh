@@ -34,6 +34,19 @@ ls -1t "$BACKUP_DIR/weekly/"*.sql.gz 2>/dev/null | tail -n +5 | xargs -r rm --
 # offsite: dated dump + rolling "latest", keep 14 dated dumps in the repo
 cp "$DUMP" "$OFFSITE_DIR/"
 cp "$DUMP" "$OFFSITE_DIR/sharedreads-latest.sql.gz"
+
+# uploaded images: mirror into the offsite repo (content-unique files, so git
+# stores each image once). Warn rather than push if the dir grows huge.
+UPLOADS_SRC="$COMPOSE_DIR/data/uploads"
+if [ -d "$UPLOADS_SRC" ]; then
+  UPLOADS_MB=$(du -sm "$UPLOADS_SRC" | cut -f1)
+  if [ "$UPLOADS_MB" -lt 500 ]; then
+    rsync -a --delete "$UPLOADS_SRC/" "$OFFSITE_DIR/uploads/"
+  else
+    echo "WARN: uploads dir is ${UPLOADS_MB}MB — skipping git offsite; move image backups to object storage" >&2
+  fi
+fi
+
 cd "$OFFSITE_DIR"
 ls -1t sharedreads-2*.sql.gz | tail -n +15 | xargs -r rm --
 git add -A

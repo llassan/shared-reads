@@ -20,6 +20,9 @@ services:
     env_file: ./backend/.env.production
     environment:
       DATABASE_URL: postgresql://sharedreads:${POSTGRES_PASSWORD:-sharedreads}@db:5432/sharedreads
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - ./data/uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -29,6 +32,8 @@ services:
   frontend:
     build: ./frontend
     restart: unless-stopped
+    volumes:
+      - ./data/uploads:/usr/share/nginx/html/uploads:ro
     depends_on:
       - backend
     ports:

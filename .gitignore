@@ -49,3 +49,6 @@ logs
 *.tmp
 *.temp
 .cache/
+
+# self-hosted image uploads (runtime data, not source)
+data/
