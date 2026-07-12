@@ -80,7 +80,7 @@ export const AdminDashboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-paper">
       {/* Header */}
       <header className="bg-gray-900 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -162,7 +162,7 @@ export const AdminDashboardPage = () => {
 
             <Card>
               <h3 className="text-sm font-medium text-gray-600 mb-2">Total Revenue</h3>
-              <p className="text-3xl font-bold text-green-600">₹{stats.revenue.total.toFixed(2)}</p>
+              <p className="text-3xl font-bold text-green-600">${stats.revenue.total.toFixed(2)}</p>
               <p className="text-sm text-gray-500 mt-1">Platform fees collected</p>
             </Card>
 

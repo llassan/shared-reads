@@ -6,6 +6,7 @@ import { requestsApi } from '../api/requests'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/common/Button'
 import { Card } from '../components/common/Card'
+import { Header } from '../components/layout/Header'
 
 export const BookDetailPage = () => {
   const { id } = useParams<{ id: string }>()
@@ -64,15 +65,16 @@ export const BookDetailPage = () => {
   const isOwnBook = user?.userId === book.lender.id
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-paper">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <Header />
+      <div className="bg-white border-b border-stone-200/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <Button variant="secondary" onClick={() => navigate('/search')}>
             ← Back to Search
           </Button>
         </div>
-      </header>
+      </div>
 
       {/* Content */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -149,7 +151,7 @@ export const BookDetailPage = () => {
                     {book.rentalType === 'FREE' ? (
                       <span className="text-green-600">FREE</span>
                     ) : (
-                      `₹${book.rentalPrice} for ${book.rentalDuration} days`
+                      `$${book.rentalPrice} for ${book.rentalDuration} days`
                     )}
                   </span>
                 </div>
@@ -157,7 +159,7 @@ export const BookDetailPage = () => {
                 {book.rentalType === 'PAID' && book.depositAmount && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Deposit Required:</span>
-                    <span className="font-medium">₹{book.depositAmount}</span>
+                    <span className="font-medium">${book.depositAmount}</span>
                   </div>
                 )}
 

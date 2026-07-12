@@ -1,5 +1,6 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './hooks/useAuth'
+import { HomePage } from './pages/HomePage'
 import { RegisterPage } from './pages/RegisterPage'
 import { VerifyOtpPage } from './pages/VerifyOtpPage'
 import { LoginPage } from './pages/LoginPage'
@@ -45,30 +46,6 @@ function App() {
         </div>
       </AuthProvider>
     </Router>
-  )
-}
-
-// Homepage component
-function HomePage() {
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
-      <div className="text-center">
-        <h1 className="text-5xl font-bold text-primary-900 mb-4">
-          SharedReads
-        </h1>
-        <p className="text-xl text-primary-700 mb-8">
-          Share Books, Build Community
-        </p>
-        <div className="space-x-4">
-          <Link to="/register">
-            <button className="btn btn-primary">Sign Up</button>
-          </Link>
-          <Link to="/login">
-            <button className="btn btn-secondary">Login</button>
-          </Link>
-        </div>
-      </div>
-    </div>
   )
 }
 

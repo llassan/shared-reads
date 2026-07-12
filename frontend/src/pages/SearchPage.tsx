@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { Search, MapPin, Star, BookX, Compass } from 'lucide-react'
 import { searchApi } from '../api/search'
 import { Button } from '../components/common/Button'
-import { Input } from '../components/common/Input'
-import { Card } from '../components/common/Card'
+import { PageShell } from '../components/layout/PageShell'
+import { formatMoney } from '../lib/format'
 import type { BookCondition, RentalType } from '../types/book'
+
+const conditionLabel = (c: string) => c.replace('_', ' ').toLowerCase()
 
 export const SearchPage = () => {
   const navigate = useNavigate()
@@ -30,7 +33,6 @@ export const SearchPage = () => {
         },
         (error) => {
           console.error('Error getting location:', error)
-          // Default to some coordinates if geolocation fails
           setLocation({ lat: 0, lng: 0 })
         }
       )
@@ -65,199 +67,203 @@ export const SearchPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-primary-900">Search Books</h1>
-            <Button variant="secondary" onClick={() => navigate('/dashboard')}>
-              Dashboard
-            </Button>
-          </div>
-        </div>
-      </header>
+    <PageShell>
+      {/* Heading */}
+      <div className="mb-8 max-w-2xl">
+        <h1 className="font-display text-4xl font-semibold text-primary-950">
+          Books near you
+        </h1>
+        <p className="mt-2 text-stone-500">
+          Every result is a real copy on a real shelf, sorted by distance.
+        </p>
+      </div>
 
-      {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search Filters */}
-        <Card className="mb-6">
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Search Filters</h2>
-
-            {/* Search Query */}
-            <Input
-              label="Search by Title or Author"
-              placeholder="e.g., Clean Code, Robert Martin"
+      {/* Search bar */}
+      <div className="card !p-4 sm:!p-5 mb-8">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 h-[18px] w-[18px] text-stone-400" />
+            <input
+              className="input !pl-10"
+              placeholder="Search by title or author…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
-
-            {/* Filters Row 1 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="label">Radius (km)</label>
-                <select
-                  className="input"
-                  value={radius}
-                  onChange={(e) => setRadius(parseFloat(e.target.value))}
-                >
-                  <option value="1">1 km</option>
-                  <option value="2">2 km</option>
-                  <option value="5">5 km</option>
-                  <option value="10">10 km</option>
-                  <option value="20">20 km</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="label">Rental Type</label>
-                <select
-                  className="input"
-                  value={rentalType}
-                  onChange={(e) => setRentalType(e.target.value as RentalType | '')}
-                >
-                  <option value="">All</option>
-                  <option value="FREE">Free</option>
-                  <option value="PAID">Paid</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="label">Condition</label>
-                <select
-                  className="input"
-                  value={condition}
-                  onChange={(e) => setCondition(e.target.value as BookCondition | '')}
-                >
-                  <option value="">All</option>
-                  <option value="NEW">New</option>
-                  <option value="LIKE_NEW">Like New</option>
-                  <option value="GOOD">Good</option>
-                  <option value="ACCEPTABLE">Acceptable</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Price Range */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Min Price (₹)"
-                type="number"
-                placeholder="0"
-                value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value ? parseFloat(e.target.value) : '')}
-              />
-              <Input
-                label="Max Price (₹)"
-                type="number"
-                placeholder="1000"
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value ? parseFloat(e.target.value) : '')}
-              />
-            </div>
-
-            {!location && (
-              <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg text-sm">
-                Please enable location access to search for books nearby
-              </div>
-            )}
-
-            <Button onClick={handleSearch} isLoading={isLoading} className="w-full">
-              🔍 Search Books
-            </Button>
           </div>
-        </Card>
+          <Button onClick={handleSearch} isLoading={isLoading} className="sm:w-auto">
+            <Search className="h-4 w-4" /> Search
+          </Button>
+        </div>
 
-        {/* Results */}
-        {hasSearched && (
-          <>
-            {isLoading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Searching...</p>
-              </div>
-            ) : data && data.books.length > 0 ? (
-              <>
-                <div className="mb-4">
-                  <p className="text-gray-600">
-                    Found {data.total} {data.total === 1 ? 'book' : 'books'}
-                  </p>
+        {/* Filters */}
+        <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div>
+            <label className="label">Within</label>
+            <select
+              className="input"
+              value={radius}
+              onChange={(e) => setRadius(parseFloat(e.target.value))}
+            >
+              <option value="1">1 km</option>
+              <option value="2">2 km</option>
+              <option value="5">5 km</option>
+              <option value="10">10 km</option>
+              <option value="20">20 km</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Type</label>
+            <select
+              className="input"
+              value={rentalType}
+              onChange={(e) => setRentalType(e.target.value as RentalType | '')}
+            >
+              <option value="">All</option>
+              <option value="FREE">Free</option>
+              <option value="PAID">Paid</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Condition</label>
+            <select
+              className="input"
+              value={condition}
+              onChange={(e) => setCondition(e.target.value as BookCondition | '')}
+            >
+              <option value="">Any</option>
+              <option value="NEW">New</option>
+              <option value="LIKE_NEW">Like new</option>
+              <option value="GOOD">Good</option>
+              <option value="ACCEPTABLE">Acceptable</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Min price</label>
+            <input
+              className="input"
+              type="number"
+              placeholder="0"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value ? parseFloat(e.target.value) : '')}
+            />
+          </div>
+          <div>
+            <label className="label">Max price</label>
+            <input
+              className="input"
+              type="number"
+              placeholder="Any"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value ? parseFloat(e.target.value) : '')}
+            />
+          </div>
+        </div>
+
+        {!location && (
+          <div className="mt-4 bg-accent-50 border border-accent-200 text-stone-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+            <Compass className="h-4 w-4 text-accent-600" />
+            Enable location access to find books near you.
+          </div>
+        )}
+      </div>
+
+      {/* Results */}
+      {hasSearched && (
+        <>
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="card animate-pulse">
+                  <div className="h-48 bg-stone-100 rounded-xl mb-4" />
+                  <div className="h-4 bg-stone-100 rounded w-3/4 mb-2" />
+                  <div className="h-3 bg-stone-100 rounded w-1/2" />
                 </div>
+              ))}
+            </div>
+          ) : data && data.books.length > 0 ? (
+            <>
+              <p className="mb-5 text-sm text-stone-500">
+                {data.total} {data.total === 1 ? 'book' : 'books'} within {radius} km
+              </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {data.books.map((book) => (
-                    <Card
-                      key={book.id}
-                      className="cursor-pointer hover:shadow-lg transition-shadow"
-                      onClick={() => navigate(`/books/${book.id}`)}
-                    >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {data.books.map((book) => (
+                  <button
+                    key={book.id}
+                    onClick={() => navigate(`/books/${book.id}`)}
+                    className="card !p-0 overflow-hidden text-left group hover:shadow-lift hover:-translate-y-0.5 transition-all"
+                  >
+                    <div className="relative">
                       <img
                         src={book.images[0]}
                         alt={book.title}
-                        className="w-full h-48 object-cover rounded-lg mb-4"
+                        className="w-full h-48 object-cover"
                       />
+                      <span className="absolute top-3 left-3 badge bg-white/95 text-ink shadow-sm">
+                        <MapPin className="h-3 w-3 text-primary-600" />
+                        {book.distance} km
+                      </span>
+                      {book.rentalType === 'FREE' ? (
+                        <span className="absolute top-3 right-3 badge bg-primary-800 text-white">
+                          Free
+                        </span>
+                      ) : (
+                        <span className="absolute top-3 right-3 badge bg-accent-400 text-primary-950">
+                          {formatMoney(book.rentalPrice!)} / loan
+                        </span>
+                      )}
+                    </div>
 
-                      <div className="space-y-2">
-                        <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
-                          {book.title}
-                        </h3>
-                        <p className="text-sm text-gray-600">by {book.author}</p>
-
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">
-                            {book.distance} km away
+                    <div className="p-5">
+                      <h3 className="font-semibold text-ink line-clamp-1 group-hover:text-primary-800 transition-colors">
+                        {book.title}
+                      </h3>
+                      <p className="mt-0.5 text-sm text-stone-500">by {book.author}</p>
+                      <div className="mt-3 flex items-center justify-between text-sm">
+                        <span className="capitalize text-stone-500">
+                          {conditionLabel(book.condition)}
+                        </span>
+                        <span className="flex items-center gap-1 text-stone-600">
+                          <Star className="h-3.5 w-3.5 text-accent-500 fill-accent-400" />
+                          {book.lender.reputationScore.toFixed(1)}
+                          <span className="text-stone-400">
+                            · {book.lender.name || 'Lender'}
                           </span>
-                          {book.rentalType === 'FREE' ? (
-                            <span className="font-semibold text-green-600">FREE</span>
-                          ) : (
-                            <span className="font-semibold text-primary-600">
-                              ₹{book.rentalPrice}/rent
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="text-sm text-gray-600">
-                          Condition: {book.condition.replace('_', ' ')}
-                        </p>
-
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <span>⭐ {book.lender.reputationScore.toFixed(1)}</span>
-                          <span>•</span>
-                          <span>{book.lender.name || 'Lender'}</span>
-                        </div>
+                        </span>
                       </div>
-                    </Card>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">📚</div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                  No books found
-                </h2>
-                <p className="text-gray-600">
-                  Try adjusting your search filters or increase the radius
-                </p>
+                    </div>
+                  </button>
+                ))}
               </div>
-            )}
-          </>
-        )}
+            </>
+          ) : (
+            <div className="text-center py-20 card">
+              <BookX className="h-12 w-12 text-stone-300 mx-auto mb-4" />
+              <h2 className="font-display text-2xl font-semibold text-ink mb-2">
+                No books found nearby
+              </h2>
+              <p className="text-stone-500 max-w-sm mx-auto">
+                Try widening the radius or loosening the filters — or be the first
+                to list this book in your area.
+              </p>
+            </div>
+          )}
+        </>
+      )}
 
-        {!hasSearched && (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🔍</div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-              Start Searching
-            </h2>
-            <p className="text-gray-600">
-              Enter search criteria and click "Search Books" to find books nearby
-            </p>
-          </div>
-        )}
-      </main>
-    </div>
+      {!hasSearched && (
+        <div className="text-center py-20 card">
+          <Compass className="h-12 w-12 text-stone-300 mx-auto mb-4" />
+          <h2 className="font-display text-2xl font-semibold text-ink mb-2">
+            Discover your neighborhood's shelf
+          </h2>
+          <p className="text-stone-500 max-w-sm mx-auto">
+            Search by title or author, and we'll show you every copy shared
+            within walking distance.
+          </p>
+        </div>
+      )}
+    </PageShell>
   )
 }

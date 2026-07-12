@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { requestsApi } from '../api/requests'
 import { Button } from '../components/common/Button'
 import { Card } from '../components/common/Card'
+import { Header } from '../components/layout/Header'
 
 export const MyRequestsPage = () => {
   const navigate = useNavigate()
@@ -38,9 +39,10 @@ export const MyRequestsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-paper">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <Header />
+      <div className="bg-white border-b border-stone-200/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-primary-900">My Requests</h1>
@@ -52,7 +54,7 @@ export const MyRequestsPage = () => {
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -97,7 +99,7 @@ export const MyRequestsPage = () => {
                       </span>
                       {request.bookListing.rentalType === 'PAID' && (
                         <span className="text-gray-600">
-                          Price: ₹{request.bookListing.rentalPrice}
+                          Price: ${request.bookListing.rentalPrice}
                         </span>
                       )}
                     </div>

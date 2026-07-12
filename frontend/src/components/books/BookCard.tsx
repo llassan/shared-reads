@@ -1,5 +1,7 @@
+
 import { BookListing } from '../../types/book'
 import { Button } from '../common/Button'
+import { formatMoney } from '../../lib/format'
 
 interface BookCardProps {
   book: BookListing
@@ -15,61 +17,62 @@ export const BookCard = ({
   showActions = false,
 }: BookCardProps) => {
   return (
-    <div className="card hover:shadow-md transition-shadow">
+    <div className="card !p-0 overflow-hidden hover:shadow-lift transition-shadow">
       {/* Image */}
       <div className="relative">
         <img
           src={book.images[0]}
           alt={book.title}
-          className="w-full h-48 object-cover rounded-lg mb-4"
+          className="w-full h-48 object-cover"
         />
         {!book.available && (
-          <div className="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+          <span className="absolute top-3 right-3 badge bg-stone-800/90 text-white">
             Unavailable
-          </div>
+          </span>
         )}
-        {book.rentalType === 'FREE' && (
-          <div className="absolute top-2 left-2 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-            FREE
-          </div>
+        {book.available && book.rentalType === 'FREE' && (
+          <span className="absolute top-3 right-3 badge bg-primary-800 text-white">
+            Free
+          </span>
+        )}
+        {book.available && book.rentalType === 'PAID' && book.rentalPrice && (
+          <span className="absolute top-3 right-3 badge bg-accent-400 text-primary-950">
+            {formatMoney(book.rentalPrice)} / loan
+          </span>
         )}
       </div>
 
       {/* Content */}
-      <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
-          {book.title}
-        </h3>
-        <p className="text-sm text-gray-600">by {book.author}</p>
+      <div className="p-5 space-y-2">
+        <h3 className="font-semibold text-ink line-clamp-1">{book.title}</h3>
+        <p className="text-sm text-stone-500">by {book.author}</p>
 
         {book.description && (
-          <p className="text-sm text-gray-700 line-clamp-2">{book.description}</p>
+          <p className="text-sm text-stone-600 line-clamp-2">{book.description}</p>
         )}
 
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Condition: {book.condition.replace('_', ' ')}</span>
-          {book.rentalType === 'PAID' && book.rentalPrice && (
-            <span className="font-semibold text-primary-600">₹{book.rentalPrice}/rent</span>
-          )}
+        <div className="flex items-center justify-between text-sm pt-1">
+          <span className="capitalize text-stone-500">
+            {book.condition.replace('_', ' ').toLowerCase()}
+          </span>
+          <span className="text-stone-500">{book.rentalDuration} days</span>
         </div>
 
         {book.rentalType === 'PAID' && book.depositAmount && (
-          <p className="text-sm text-gray-600">Deposit: ₹{book.depositAmount}</p>
+          <p className="text-xs text-stone-400">
+            Refundable deposit: {formatMoney(book.depositAmount)}
+          </p>
         )}
 
-        <p className="text-sm text-gray-600">
-          Duration: {book.rentalDuration} days
-        </p>
-
         {showActions && (
-          <div className="flex gap-2 mt-4 pt-4 border-t">
+          <div className="flex gap-2 mt-4 pt-4 border-t border-stone-100">
             {onToggleAvailability && (
               <Button
                 variant="secondary"
                 onClick={onToggleAvailability}
                 className="flex-1"
               >
-                {book.available ? 'Mark Unavailable' : 'Mark Available'}
+                {book.available ? 'Mark unavailable' : 'Mark available'}
               </Button>
             )}
             {onDelete && (

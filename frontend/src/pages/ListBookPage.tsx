@@ -11,6 +11,7 @@ import { Card } from '../components/common/Card'
 import { FileUpload } from '../components/common/FileUpload'
 import { LocationPicker } from '../components/common/LocationPicker'
 import type { BookCondition, RentalType } from '../types/book'
+import { Header } from '../components/layout/Header'
 
 const listBookSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
@@ -100,9 +101,10 @@ export const ListBookPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-paper">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <Header />
+      <div className="bg-white border-b border-stone-200/70">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-primary-900">List a Book</h1>
@@ -111,7 +113,7 @@ export const ListBookPage = () => {
             </Button>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Form */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -198,7 +200,7 @@ export const ListBookPage = () => {
               {rentalType === 'PAID' && (
                 <>
                   <Input
-                    label="Rental Price (₹)"
+                    label="Rental Price ($)"
                     type="number"
                     placeholder="e.g., 50"
                     error={errors.rentalPrice?.message}
@@ -206,7 +208,7 @@ export const ListBookPage = () => {
                   />
 
                   <Input
-                    label="Deposit Amount (₹)"
+                    label="Deposit Amount ($)"
                     type="number"
                     placeholder="e.g., 200"
                     error={errors.depositAmount?.message}

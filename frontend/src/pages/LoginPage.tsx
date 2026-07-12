@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/common/Button'
 import { Input } from '../components/common/Input'
-import { Card } from '../components/common/Card'
+import { AuthLayout } from '../components/layout/AuthLayout'
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email format'),
@@ -33,64 +33,54 @@ export const LoginPage = () => {
     try {
       setIsLoading(true)
       setError(null)
-
       await login(data)
-
-      // Navigate to dashboard on success
       navigate('/dashboard', { replace: true })
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 'Login failed. Please try again.'
-      setError(errorMessage)
+      setError(err.response?.data?.error || 'Login failed. Please try again.')
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-primary-900 mb-2">SharedReads</h1>
-          <p className="text-primary-700">Welcome back!</p>
-        </div>
+    <AuthLayout
+      title="Welcome back"
+      subtitle="Log in to keep your books moving."
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+            {error}
+          </div>
+        )}
 
-        <Card>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {error}
-              </div>
-            )}
+        <Input
+          label="Email"
+          type="email"
+          placeholder="you@example.com"
+          error={errors.email?.message}
+          {...register('email')}
+        />
 
-            <Input
-              label="Email"
-              type="email"
-              placeholder="your@email.com"
-              error={errors.email?.message}
-              {...register('email')}
-            />
+        <Input
+          label="Password"
+          type="password"
+          placeholder="Your password"
+          error={errors.password?.message}
+          {...register('password')}
+        />
 
-            <Input
-              label="Password"
-              type="password"
-              placeholder="Enter your password"
-              error={errors.password?.message}
-              {...register('password')}
-            />
+        <Button type="submit" isLoading={isLoading} className="w-full">
+          Log in
+        </Button>
 
-            <Button type="submit" isLoading={isLoading} className="w-full">
-              Login
-            </Button>
-
-            <p className="text-center text-sm text-gray-600">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-primary-600 hover:text-primary-700 font-medium">
-                Sign Up
-              </Link>
-            </p>
-          </form>
-        </Card>
-      </div>
-    </div>
+        <p className="text-center text-sm text-stone-500">
+          New to SharedReads?{' '}
+          <Link to="/register" className="font-semibold text-primary-700 hover:text-primary-800">
+            Create a free account
+          </Link>
+        </p>
+      </form>
+    </AuthLayout>
   )
 }

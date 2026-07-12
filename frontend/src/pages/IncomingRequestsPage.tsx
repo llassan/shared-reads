@@ -5,6 +5,7 @@ import { requestsApi } from '../api/requests'
 import { Button } from '../components/common/Button'
 import { Card } from '../components/common/Card'
 import { Input } from '../components/common/Input'
+import { Header } from '../components/layout/Header'
 
 export const IncomingRequestsPage = () => {
   const navigate = useNavigate()
@@ -65,9 +66,10 @@ export const IncomingRequestsPage = () => {
   const processedRequests = requests?.filter((r) => r.status !== 'PENDING') || []
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-paper">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <Header />
+      <div className="bg-white border-b border-stone-200/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-primary-900">Incoming Requests</h1>
@@ -76,7 +78,7 @@ export const IncomingRequestsPage = () => {
             </Button>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

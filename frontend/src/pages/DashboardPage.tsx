@@ -1,17 +1,60 @@
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
+import {
+  BookOpen,
+  BookPlus,
+  Search,
+  Send,
+  Inbox,
+  Star,
+  BadgeCheck,
+  ArrowRight,
+} from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import { Button } from '../components/common/Button'
-import { Card } from '../components/common/Card'
+import { PageShell } from '../components/layout/PageShell'
+
+const actions = [
+  {
+    to: '/list-book',
+    icon: BookPlus,
+    title: 'List a book',
+    body: 'Put a finished book back into circulation.',
+    featured: true,
+  },
+  {
+    to: '/search',
+    icon: Search,
+    title: 'Browse nearby',
+    body: 'See what readers around you are sharing.',
+  },
+  {
+    to: '/my-listings',
+    icon: BookOpen,
+    title: 'My shelf',
+    body: 'Manage the books you have listed.',
+  },
+  {
+    to: '/my-requests',
+    icon: Send,
+    title: 'My requests',
+    body: 'Track books you asked to borrow.',
+  },
+  {
+    to: '/incoming-requests',
+    icon: Inbox,
+    title: 'Incoming requests',
+    body: 'Respond to borrowers of your books.',
+  },
+]
 
 export const DashboardPage = () => {
-  const { user, logout, isLoading } = useAuth()
+  const { user, isLoading } = useAuth()
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-paper">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className="mt-4 text-stone-500">Loading…</p>
         </div>
       </div>
     )
@@ -22,109 +65,91 @@ export const DashboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-primary-900">SharedReads</h1>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                {user.name || user.email}
-              </span>
-              <Button variant="secondary" onClick={logout}>
-                Logout
-              </Button>
-            </div>
+    <PageShell>
+      {/* Greeting */}
+      <div className="mb-10">
+        <h1 className="font-display text-4xl font-semibold text-primary-950">
+          Welcome back{user.name ? `, ${user.name.split(' ')[0]}` : ''}.
+        </h1>
+        <p className="mt-2 text-stone-500">
+          What would you like to do with your shelf today?
+        </p>
+      </div>
+
+      {/* Account strip */}
+      <div className="mb-10 card !p-5 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm">
+        <div className="flex items-center gap-2">
+          <BadgeCheck className="h-4.5 w-4.5 h-[18px] w-[18px] text-primary-600" />
+          <span className="text-stone-600">{user.email}</span>
+          {user.emailVerified && (
+            <span className="badge bg-primary-100 text-primary-800">Verified</span>
+          )}
+        </div>
+        {user.phone && (
+          <div className="flex items-center gap-2 text-stone-600">
+            <span>{user.phone}</span>
+            {user.phoneVerified && (
+              <span className="badge bg-primary-100 text-primary-800">Verified</span>
+            )}
           </div>
+        )}
+        <div className="flex items-center gap-1.5 text-stone-600">
+          <Star className="h-4 w-4 text-accent-500 fill-accent-400" />
+          <span className="font-semibold text-ink">{user.reputationScore.toFixed(1)}</span>
+          <span className="text-stone-400">/ 5.0 reputation</span>
         </div>
-      </header>
+        <span className="badge bg-primary-100 text-primary-800 ml-auto">
+          {user.accountStatus}
+        </span>
+      </div>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome, {user.name || 'there'}! 👋
-          </h2>
-          <p className="text-gray-600">
-            Your account is verified and ready to use.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Account Information
-            </h3>
-            <div className="space-y-2 text-sm">
-              <p>
-                <span className="font-medium">Email:</span> {user.email}
-                {user.emailVerified && (
-                  <span className="ml-2 text-green-600">✓ Verified</span>
-                )}
-              </p>
-              {user.phone && (
-                <p>
-                  <span className="font-medium">Phone:</span> {user.phone}
-                  {user.phoneVerified && (
-                    <span className="ml-2 text-green-600">✓ Verified</span>
-                  )}
-                </p>
-              )}
-              <p>
-                <span className="font-medium">Reputation Score:</span>{' '}
-                {user.reputationScore.toFixed(1)} / 5.0
-              </p>
-              <p>
-                <span className="font-medium">Account Status:</span>{' '}
-                <span className="text-green-600">{user.accountStatus}</span>
-              </p>
+      {/* Actions */}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {actions.map((a) => (
+          <Link
+            key={a.to}
+            to={a.to}
+            className={
+              a.featured
+                ? 'group card !p-7 bg-primary-900 !border-primary-800 hover:bg-primary-800 transition-colors'
+                : 'group card !p-7 hover:shadow-lift hover:-translate-y-0.5 transition-all'
+            }
+          >
+            <div
+              className={
+                a.featured
+                  ? 'h-11 w-11 rounded-xl bg-white/10 text-accent-400 flex items-center justify-center'
+                  : 'h-11 w-11 rounded-xl bg-primary-100 text-primary-800 flex items-center justify-center'
+              }
+            >
+              <a.icon className="h-5 w-5" />
             </div>
-          </Card>
-
-          <Card>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Quick Actions
+            <h3
+              className={
+                a.featured
+                  ? 'mt-5 text-lg font-semibold text-white flex items-center gap-2'
+                  : 'mt-5 text-lg font-semibold text-ink flex items-center gap-2'
+              }
+            >
+              {a.title}
+              <ArrowRight
+                className={
+                  a.featured
+                    ? 'h-4 w-4 text-accent-400 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all'
+                    : 'h-4 w-4 text-primary-600 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all'
+                }
+              />
             </h3>
-            <div className="space-y-2">
-              <Button
-                className="w-full"
-                onClick={() => (window.location.href = '/list-book')}
-              >
-                📚 List a Book
-              </Button>
-              <Button
-                className="w-full"
-                variant="secondary"
-                onClick={() => (window.location.href = '/my-listings')}
-              >
-                📖 My Listings
-              </Button>
-              <Button
-                className="w-full"
-                variant="secondary"
-                onClick={() => (window.location.href = '/search')}
-              >
-                🔍 Search Books
-              </Button>
-              <Button
-                className="w-full"
-                variant="secondary"
-                onClick={() => (window.location.href = '/my-requests')}
-              >
-                📬 My Requests
-              </Button>
-              <Button
-                className="w-full"
-                variant="secondary"
-                onClick={() => (window.location.href = '/incoming-requests')}
-              >
-                📥 Incoming Requests
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </main>
-    </div>
+            <p
+              className={
+                a.featured ? 'mt-1.5 text-sm text-primary-200' : 'mt-1.5 text-sm text-stone-500'
+              }
+            >
+              {a.body}
+            </p>
+          </Link>
+        ))}
+      </div>
+    </PageShell>
   )
 }

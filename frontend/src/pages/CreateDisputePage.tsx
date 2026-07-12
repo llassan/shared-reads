@@ -5,6 +5,7 @@ import { transactionsApi } from '../api/transactions'
 import { disputesApi } from '../api/disputes'
 import { Button } from '../components/common/Button'
 import { Card } from '../components/common/Card'
+import { Header } from '../components/layout/Header'
 
 export const CreateDisputePage = () => {
   const { transactionId } = useParams<{ transactionId: string }>()
@@ -100,15 +101,16 @@ export const CreateDisputePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-paper">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <Header />
+      <div className="bg-white border-b border-stone-200/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <Button variant="secondary" onClick={() => navigate(`/transactions/${transactionId}`)}>
             ← Back to Transaction
           </Button>
         </div>
-      </header>
+      </div>
 
       {/* Content */}
       <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

@@ -6,13 +6,13 @@ import { z } from 'zod'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/common/Button'
 import { Input } from '../components/common/Input'
-import { Card } from '../components/common/Card'
+import { AuthLayout } from '../components/layout/AuthLayout'
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email format'),
   phone: z
     .string()
-    .regex(/^\+91[6-9]\d{9}$/, 'Phone must be in format +91XXXXXXXXXX')
+    .regex(/^\+[1-9]\d{6,14}$/, 'Use international format, e.g. +14155551234')
     .optional()
     .or(z.literal('')),
   password: z
@@ -50,7 +50,6 @@ export const RegisterPage = () => {
         phone: data.phone || undefined,
       })
 
-      // Navigate to OTP verification page with user data
       navigate('/verify-otp', {
         state: {
           userId: result.userId,
@@ -66,66 +65,60 @@ export const RegisterPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-primary-900 mb-2">SharedReads</h1>
-          <p className="text-primary-700">Create your account</p>
-        </div>
+    <AuthLayout
+      title="Create your account"
+      subtitle="Join readers sharing books around the world — free, forever."
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+            {error}
+          </div>
+        )}
 
-        <Card>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {error}
-              </div>
-            )}
+        <Input
+          label="Email"
+          type="email"
+          placeholder="you@example.com"
+          error={errors.email?.message}
+          {...register('email')}
+        />
 
-            <Input
-              label="Email"
-              type="email"
-              placeholder="your@email.com"
-              error={errors.email?.message}
-              {...register('email')}
-            />
+        <Input
+          label="Name (optional)"
+          type="text"
+          placeholder="How should we introduce you?"
+          error={errors.name?.message}
+          {...register('name')}
+        />
 
-            <Input
-              label="Phone Number (optional)"
-              type="tel"
-              placeholder="+919876543210"
-              error={errors.phone?.message}
-              {...register('phone')}
-            />
+        <Input
+          label="Phone (optional)"
+          type="tel"
+          placeholder="+14155551234"
+          error={errors.phone?.message}
+          {...register('phone')}
+        />
 
-            <Input
-              label="Password"
-              type="password"
-              placeholder="Min 8 chars, 1 uppercase, 1 number"
-              error={errors.password?.message}
-              {...register('password')}
-            />
+        <Input
+          label="Password"
+          type="password"
+          placeholder="Min 8 chars, 1 uppercase, 1 number"
+          error={errors.password?.message}
+          {...register('password')}
+        />
 
-            <Input
-              label="Name (Optional)"
-              type="text"
-              placeholder="Your Name"
-              error={errors.name?.message}
-              {...register('name')}
-            />
+        <Button type="submit" isLoading={isLoading} className="w-full">
+          Create account
+        </Button>
 
-            <Button type="submit" isLoading={isLoading} className="w-full">
-              Sign Up
-            </Button>
-
-            <p className="text-center text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link to="/login" className="text-primary-600 hover:text-primary-700 font-medium">
-                Login
-              </Link>
-            </p>
-          </form>
-        </Card>
-      </div>
-    </div>
+        <p className="text-center text-sm text-stone-500">
+          Already a member?{' '}
+          <Link to="/login" className="font-semibold text-primary-700 hover:text-primary-800">
+            Log in
+          </Link>
+        </p>
+      </form>
+    </AuthLayout>
   )
 }

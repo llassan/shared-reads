@@ -5,7 +5,7 @@ export const registerSchema = z.object({
   email: z.string().email('Invalid email format'),
   phone: z
     .string()
-    .regex(/^\+91[6-9]\d{9}$/, 'Phone must be in format +91XXXXXXXXXX')
+    .regex(/^\+[1-9]\d{6,14}$/, 'Phone must be in international E.164 format, e.g. +14155551234')
     .optional(),
   password: z
     .string()

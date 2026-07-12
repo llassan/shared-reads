@@ -6,6 +6,7 @@ import { requestsApi } from '../api/requests'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '../components/common/Button'
 import { Card } from '../components/common/Card'
+import { Header } from '../components/layout/Header'
 
 // Razorpay types
 declare global {
@@ -179,15 +180,16 @@ export const PaymentPage = () => {
     (Number(transaction.platformFee) || 0)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-paper">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <Header />
+      <div className="bg-white border-b border-stone-200/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <Button variant="secondary" onClick={() => navigate('/my-requests')}>
             ← Back to Requests
           </Button>
         </div>
-      </header>
+      </div>
 
       {/* Content */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -252,24 +254,24 @@ export const PaymentPage = () => {
               {transaction.depositAmount > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Security Deposit:</span>
-                  <span className="font-medium">₹{Number(transaction.depositAmount).toFixed(2)}</span>
+                  <span className="font-medium">${Number(transaction.depositAmount).toFixed(2)}</span>
                 </div>
               )}
               {transaction.rentalAmount > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Rental Fee:</span>
-                  <span className="font-medium">₹{Number(transaction.rentalAmount).toFixed(2)}</span>
+                  <span className="font-medium">${Number(transaction.rentalAmount).toFixed(2)}</span>
                 </div>
               )}
               {transaction.platformFee > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Platform Fee (15%):</span>
-                  <span className="font-medium">₹{Number(transaction.platformFee).toFixed(2)}</span>
+                  <span className="font-medium">${Number(transaction.platformFee).toFixed(2)}</span>
                 </div>
               )}
               <div className="border-t pt-2 flex justify-between font-semibold text-base">
                 <span>Total Amount:</span>
-                <span className="text-primary-600">₹{totalAmount.toFixed(2)}</span>
+                <span className="text-primary-600">${totalAmount.toFixed(2)}</span>
               </div>
             </div>
           </div>
