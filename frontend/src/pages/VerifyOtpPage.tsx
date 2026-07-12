@@ -10,7 +10,11 @@ import { Card } from '../components/common/Card'
 
 const verifyOtpSchema = z.object({
   emailOtp: z.string().length(6, 'Email OTP must be 6 digits'),
-  phoneOtp: z.string().length(6, 'Phone OTP must be 6 digits'),
+  phoneOtp: z
+    .string()
+    .length(6, 'Phone OTP must be 6 digits')
+    .optional()
+    .or(z.literal('')),
 })
 
 type VerifyOtpFormData = z.infer<typeof verifyOtpSchema>
@@ -18,7 +22,7 @@ type VerifyOtpFormData = z.infer<typeof verifyOtpSchema>
 interface LocationState {
   userId: string
   email: string
-  phone: string
+  phone: string | null
 }
 
 export const VerifyOtpPage = () => {
@@ -53,7 +57,7 @@ export const VerifyOtpPage = () => {
       await verifyOtp({
         userId: state.userId,
         emailOtp: data.emailOtp,
-        phoneOtp: data.phoneOtp,
+        phoneOtp: state.phone ? data.phoneOtp || undefined : undefined,
       })
 
       // Navigate to dashboard on success
@@ -87,7 +91,9 @@ export const VerifyOtpPage = () => {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-primary-900 mb-2">Verify Your Account</h1>
           <p className="text-primary-700">
-            We've sent verification codes to your email and phone
+            {state.phone
+              ? "We've sent verification codes to your email and phone"
+              : "We've sent a verification code to your email"}
           </p>
         </div>
 
@@ -108,7 +114,7 @@ export const VerifyOtpPage = () => {
             <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm">
               <p className="font-medium mb-1">Check your inbox</p>
               <p>Email: {state.email}</p>
-              <p>Phone: {state.phone}</p>
+              {state.phone && <p>Phone: {state.phone}</p>}
             </div>
 
             <div>
@@ -130,24 +136,26 @@ export const VerifyOtpPage = () => {
               </button>
             </div>
 
-            <div>
-              <Input
-                label="Phone OTP"
-                type="text"
-                placeholder="6-digit code"
-                maxLength={6}
-                error={errors.phoneOtp?.message}
-                {...register('phoneOtp')}
-              />
-              <button
-                type="button"
-                onClick={() => handleResendOtp('phone')}
-                disabled={isResending === 'phone'}
-                className="mt-1 text-sm text-primary-600 hover:text-primary-700 disabled:opacity-50"
-              >
-                {isResending === 'phone' ? 'Sending...' : 'Resend phone OTP'}
-              </button>
-            </div>
+            {state.phone && (
+              <div>
+                <Input
+                  label="Phone OTP"
+                  type="text"
+                  placeholder="6-digit code"
+                  maxLength={6}
+                  error={errors.phoneOtp?.message}
+                  {...register('phoneOtp')}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleResendOtp('phone')}
+                  disabled={isResending === 'phone'}
+                  className="mt-1 text-sm text-primary-600 hover:text-primary-700 disabled:opacity-50"
+                >
+                  {isResending === 'phone' ? 'Sending...' : 'Resend phone OTP'}
+                </button>
+              </div>
+            )}
 
             <Button type="submit" isLoading={isLoading} className="w-full">
               Verify & Continue

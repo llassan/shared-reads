@@ -3,7 +3,7 @@ export type AccountStatus = 'ACTIVE' | 'SUSPENDED' | 'DELETED'
 export interface User {
   id: string
   email: string
-  phone: string
+  phone: string | null
   name: string | null
   profilePhoto: string | null
   location: {
@@ -30,7 +30,7 @@ export interface AuthResponse {
 
 export interface RegisterRequest {
   email: string
-  phone: string
+  phone?: string
   password: string
   name?: string
 }
@@ -43,5 +43,5 @@ export interface LoginRequest {
 export interface VerifyOtpRequest {
   userId: string
   emailOtp: string
-  phoneOtp: string
+  phoneOtp?: string
 }

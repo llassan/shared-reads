@@ -63,12 +63,14 @@ export const DashboardPage = () => {
                   <span className="ml-2 text-green-600">✓ Verified</span>
                 )}
               </p>
-              <p>
-                <span className="font-medium">Phone:</span> {user.phone}
-                {user.phoneVerified && (
-                  <span className="ml-2 text-green-600">✓ Verified</span>
-                )}
-              </p>
+              {user.phone && (
+                <p>
+                  <span className="font-medium">Phone:</span> {user.phone}
+                  {user.phoneVerified && (
+                    <span className="ml-2 text-green-600">✓ Verified</span>
+                  )}
+                </p>
+              )}
               <p>
                 <span className="font-medium">Reputation Score:</span>{' '}
                 {user.reputationScore.toFixed(1)} / 5.0

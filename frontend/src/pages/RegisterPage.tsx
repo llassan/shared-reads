@@ -12,7 +12,9 @@ const registerSchema = z.object({
   email: z.string().email('Invalid email format'),
   phone: z
     .string()
-    .regex(/^\+91[6-9]\d{9}$/, 'Phone must be in format +91XXXXXXXXXX'),
+    .regex(/^\+91[6-9]\d{9}$/, 'Phone must be in format +91XXXXXXXXXX')
+    .optional()
+    .or(z.literal('')),
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters')
@@ -43,7 +45,10 @@ export const RegisterPage = () => {
       setIsLoading(true)
       setError(null)
 
-      const result = await registerUser(data)
+      const result = await registerUser({
+        ...data,
+        phone: data.phone || undefined,
+      })
 
       // Navigate to OTP verification page with user data
       navigate('/verify-otp', {
@@ -85,7 +90,7 @@ export const RegisterPage = () => {
             />
 
             <Input
-              label="Phone Number"
+              label="Phone Number (optional)"
               type="tel"
               placeholder="+919876543210"
               error={errors.phone?.message}

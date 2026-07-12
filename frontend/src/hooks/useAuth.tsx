@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null
   isLoading: boolean
   isAuthenticated: boolean
-  register: (data: RegisterRequest) => Promise<{ userId: string; email: string; phone: string }>
+  register: (data: RegisterRequest) => Promise<{ userId: string; email: string; phone: string | null }>
   verifyOtp: (data: VerifyOtpRequest) => Promise<void>
   resendOtp: (userId: string, type: 'email' | 'phone') => Promise<void>
   login: (data: LoginRequest) => Promise<void>

@@ -37,11 +37,16 @@ import {
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const validatedData = registerSchema.parse(req.body);
 
-  // Check if user already exists
+  // Check if user already exists (build conditions dynamically: an
+  // undefined phone inside OR would match every row)
+  const duplicateConditions: { email?: string; phone?: string }[] = [
+    { email: validatedData.email },
+  ];
+  if (validatedData.phone) {
+    duplicateConditions.push({ phone: validatedData.phone });
+  }
   const existingUser = await prisma.user.findFirst({
-    where: {
-      OR: [{ email: validatedData.email }, { phone: validatedData.phone }],
-    },
+    where: { OR: duplicateConditions },
   });
 
   if (existingUser) {
@@ -54,12 +59,12 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   // Hash password
   const passwordHash = await hashPassword(validatedData.password);
 
-  // Generate OTPs
+  // Generate OTPs (phone OTP only when a phone number was provided)
   const emailOtp = generateOtp();
-  const phoneOtp = generateOtp();
+  const phoneOtp = validatedData.phone ? generateOtp() : null;
 
   const emailOtpHash = await hashOtp(emailOtp);
-  const phoneOtpHash = await hashOtp(phoneOtp);
+  const phoneOtpHash = phoneOtp ? await hashOtp(phoneOtp) : null;
   const otpExpiresAt = getOtpExpiry();
 
   // Create user
@@ -86,14 +91,17 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
   // Send OTPs (run in parallel) - skip in development if services not configured
   try {
-    await Promise.all([
+    const otpSends: Promise<void>[] = [
       sendOtpEmail({
         email: user.email,
         otp: emailOtp,
         name: user.name || undefined,
       }),
-      sendOtpSms({ phone: user.phone, otp: phoneOtp }),
-    ]);
+    ];
+    if (user.phone && phoneOtp) {
+      otpSends.push(sendOtpSms({ phone: user.phone, otp: phoneOtp }));
+    }
+    await Promise.all(otpSends);
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
       console.log('⚠️  Email/SMS service not configured - OTPs printed above');
@@ -104,7 +112,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
   res.status(201).json({
     success: true,
-    message: 'User registered successfully. Please verify your email and phone.',
+    message: user.phone
+      ? 'User registered successfully. Please verify your email and phone.'
+      : 'User registered successfully. Please verify your email.',
     data: {
       userId: user.id,
       email: user.email,
@@ -129,11 +139,17 @@ export const verifyOtpCodes = asyncHandler(
       throw new NotFoundError('User not found');
     }
 
-    if (user.emailVerified && user.phoneVerified) {
+    const needsPhoneOtp = Boolean(user.phone);
+
+    if (user.emailVerified && (!needsPhoneOtp || user.phoneVerified)) {
       throw new ValidationError('User already verified');
     }
 
-    if (!user.otpExpiresAt || !user.emailOtpHash || !user.phoneOtpHash) {
+    if (
+      !user.otpExpiresAt ||
+      !user.emailOtpHash ||
+      (needsPhoneOtp && !user.phoneOtpHash)
+    ) {
       throw new ValidationError('OTP expired or not found. Please request a new one.');
     }
 
@@ -141,18 +157,24 @@ export const verifyOtpCodes = asyncHandler(
       throw new ValidationError('OTP expired. Please request a new one.');
     }
 
-    // Verify both OTPs
-    const [isEmailOtpValid, isPhoneOtpValid] = await Promise.all([
-      verifyOtp(validatedData.emailOtp, user.emailOtpHash),
-      verifyOtp(validatedData.phoneOtp, user.phoneOtpHash),
-    ]);
+    if (needsPhoneOtp && !validatedData.phoneOtp) {
+      throw new ValidationError('Phone OTP is required');
+    }
 
+    // Verify OTPs (phone only for accounts that registered with one)
+    const isEmailOtpValid = await verifyOtp(validatedData.emailOtp, user.emailOtpHash);
     if (!isEmailOtpValid) {
       throw new ValidationError('Invalid email OTP');
     }
 
-    if (!isPhoneOtpValid) {
-      throw new ValidationError('Invalid phone OTP');
+    if (needsPhoneOtp) {
+      const isPhoneOtpValid = await verifyOtp(
+        validatedData.phoneOtp!,
+        user.phoneOtpHash!
+      );
+      if (!isPhoneOtpValid) {
+        throw new ValidationError('Invalid phone OTP');
+      }
     }
 
     // Update user as verified
@@ -160,7 +182,7 @@ export const verifyOtpCodes = asyncHandler(
       where: { id: user.id },
       data: {
         emailVerified: true,
-        phoneVerified: true,
+        phoneVerified: needsPhoneOtp,
         emailOtpHash: null,
         phoneOtpHash: null,
         otpExpiresAt: null,
@@ -217,7 +239,7 @@ export const resendOtp = asyncHandler(async (req: Request, res: Response) => {
     throw new NotFoundError('User not found');
   }
 
-  if (user.emailVerified && user.phoneVerified) {
+  if (user.emailVerified && (!user.phone || user.phoneVerified)) {
     throw new ValidationError('User already verified');
   }
 
@@ -246,6 +268,10 @@ export const resendOtp = asyncHandler(async (req: Request, res: Response) => {
       }
     }
   } else {
+    if (!user.phone) {
+      throw new ValidationError('No phone number on this account');
+    }
+
     await prisma.user.update({
       where: { id: user.id },
       data: { phoneOtpHash: otpHash, otpExpiresAt },
@@ -296,9 +322,9 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new UnauthorizedError('Invalid email or password');
   }
 
-  if (!user.emailVerified || !user.phoneVerified) {
+  if (!user.emailVerified || (user.phone !== null && !user.phoneVerified)) {
     throw new UnauthorizedError(
-      'Please verify your email and phone before logging in'
+      'Please verify your account before logging in'
     );
   }
 

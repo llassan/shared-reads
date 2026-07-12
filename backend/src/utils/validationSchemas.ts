@@ -5,7 +5,8 @@ export const registerSchema = z.object({
   email: z.string().email('Invalid email format'),
   phone: z
     .string()
-    .regex(/^\+91[6-9]\d{9}$/, 'Phone must be in format +91XXXXXXXXXX'),
+    .regex(/^\+91[6-9]\d{9}$/, 'Phone must be in format +91XXXXXXXXXX')
+    .optional(),
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters')
@@ -23,7 +24,7 @@ export const loginSchema = z.object({
 export const verifyOtpSchema = z.object({
   userId: z.string().cuid('Invalid user ID'),
   emailOtp: z.string().length(6, 'Email OTP must be 6 digits'),
-  phoneOtp: z.string().length(6, 'Phone OTP must be 6 digits'),
+  phoneOtp: z.string().length(6, 'Phone OTP must be 6 digits').optional(),
 });
 
 export const resendOtpSchema = z.object({

@@ -16,7 +16,7 @@ export interface ApiResponse<T> {
 export interface RegisterResponse {
   userId: string
   email: string
-  phone: string
+  phone: string | null
 }
 
 export const authApi = {
