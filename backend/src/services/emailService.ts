@@ -20,7 +20,7 @@ export const sendOtpEmail = async ({
   name,
 }: SendOtpEmailParams): Promise<void> => {
   try {
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: config.resend.fromEmail,
       to: email,
       subject: 'Verify your SharedReads account',
@@ -62,6 +62,10 @@ export const sendOtpEmail = async ({
       `,
     });
 
+    if (error) {
+      throw new Error(`Resend error: ${error.message}`);
+    }
+
     if (config.isDevelopment) {
       console.log(`✉️  OTP sent to ${email}: ${otp}`);
     }
@@ -76,7 +80,7 @@ export const sendWelcomeEmail = async ({
   name,
 }: SendWelcomeEmailParams): Promise<void> => {
   try {
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: config.resend.fromEmail,
       to: email,
       subject: 'Welcome to SharedReads!',
@@ -118,6 +122,10 @@ export const sendWelcomeEmail = async ({
         </html>
       `,
     });
+
+    if (error) {
+      throw new Error(`Resend error: ${error.message}`);
+    }
   } catch (error) {
     console.error('Failed to send welcome email:', error);
     // Don't throw - welcome email is not critical
