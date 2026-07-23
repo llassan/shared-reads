@@ -93,6 +93,14 @@ export const authApi = {
   },
 
   /**
+   * Update profile (name)
+   */
+  updateProfile: async (data: { name: string }): Promise<User> => {
+    const response = await axios.patch<ApiResponse<{ user: User }>>('/auth/me', data)
+    return response.data.data.user
+  },
+
+  /**
    * Logout
    */
   logout: () => {

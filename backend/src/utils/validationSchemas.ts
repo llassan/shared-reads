@@ -53,6 +53,10 @@ export const createBookListingSchema = z.object({
   }),
 });
 
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(100),
+});
+
 // Search validation schema
 export const searchBooksSchema = z.object({
   query: z.string().optional(),

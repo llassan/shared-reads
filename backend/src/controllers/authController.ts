@@ -3,6 +3,7 @@ import prisma from '../config/database';
 import { asyncHandler } from '../middleware/asyncHandler';
 import {
   registerSchema,
+  updateProfileSchema,
   loginSchema,
   verifyOtpSchema,
   resendOtpSchema,
@@ -426,6 +427,40 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
 
   res.json({
     success: true,
+    data: { user },
+  });
+});
+
+/**
+ * Update current user's profile
+ * PATCH /api/v1/auth/me
+ */
+export const updateMe = asyncHandler(async (req: Request, res: Response) => {
+  const authReq = req as any; // Type assertion for AuthRequest
+  const validatedData = updateProfileSchema.parse(req.body);
+
+  const user = await prisma.user.update({
+    where: { id: authReq.user.userId },
+    data: { name: validatedData.name },
+    select: {
+      id: true,
+      email: true,
+      phone: true,
+      name: true,
+      profilePhoto: true,
+      location: true,
+      emailVerified: true,
+      phoneVerified: true,
+      reputationScore: true,
+      accountStatus: true,
+      createdAt: true,
+      lastLoginAt: true,
+    },
+  });
+
+  res.json({
+    success: true,
+    message: 'Profile updated',
     data: { user },
   });
 });

@@ -6,6 +6,7 @@ import {
   login,
   refreshToken,
   getMe,
+  updateMe,
 } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
 import { authLimiter } from '../middleware/rateLimiter';
@@ -21,5 +22,6 @@ router.post('/refresh', refreshToken);
 
 // Protected routes
 router.get('/me', authenticate, getMe);
+router.patch('/me', authenticate, updateMe);
 
 export default router;

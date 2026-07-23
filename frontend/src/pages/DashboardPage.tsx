@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import {
   BookOpen,
@@ -8,6 +9,10 @@ import {
   Star,
   BadgeCheck,
   ArrowRight,
+  UserRound,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { PageShell } from '../components/layout/PageShell'
@@ -47,7 +52,28 @@ const actions = [
 ]
 
 export const DashboardPage = () => {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading, updateProfile } = useAuth()
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
+  const [savingName, setSavingName] = useState(false)
+
+  const startNameEdit = () => {
+    setNameDraft(user?.name || '')
+    setEditingName(true)
+  }
+
+  const saveName = async () => {
+    if (!nameDraft.trim() || savingName) return
+    setSavingName(true)
+    try {
+      await updateProfile({ name: nameDraft.trim() })
+      setEditingName(false)
+    } catch {
+      // keep the editor open so the user can retry
+    } finally {
+      setSavingName(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -78,6 +104,54 @@ export const DashboardPage = () => {
 
       {/* Account strip */}
       <div className="mb-10 card !p-5 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm">
+        <div className="flex items-center gap-2">
+          <UserRound className="h-4.5 w-4.5 h-[18px] w-[18px] text-primary-600" />
+          {editingName ? (
+            <span className="flex items-center gap-1.5">
+              <input
+                className="input !min-h-0 !py-1.5 !w-44"
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveName()
+                  if (e.key === 'Escape') setEditingName(false)
+                }}
+                placeholder="Your name"
+                maxLength={100}
+                autoFocus
+              />
+              <button
+                onClick={saveName}
+                disabled={savingName || !nameDraft.trim()}
+                className="p-1.5 rounded-lg text-primary-700 hover:bg-primary-50 disabled:opacity-40"
+                aria-label="Save name"
+              >
+                <Check className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setEditingName(false)}
+                className="p-1.5 rounded-lg text-stone-400 hover:bg-stone-100"
+                aria-label="Cancel"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <span className={user.name ? 'font-medium text-ink' : 'italic text-stone-400'}>
+                {user.name || 'Add your name'}
+              </span>
+              <button
+                onClick={startNameEdit}
+                className="p-1 rounded-lg text-stone-400 hover:text-primary-700 hover:bg-primary-50 transition-colors"
+                aria-label="Edit name"
+                title="Edit name"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <BadgeCheck className="h-4.5 w-4.5 h-[18px] w-[18px] text-primary-600" />
           <span className="text-stone-600">{user.email}</span>

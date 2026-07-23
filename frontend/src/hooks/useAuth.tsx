@@ -11,6 +11,7 @@ interface AuthContextType {
   verifyOtp: (data: VerifyOtpRequest) => Promise<void>
   resendOtp: (userId: string, type: 'email' | 'phone') => Promise<void>
   login: (data: LoginRequest) => Promise<void>
+  updateProfile: (data: { name: string }) => Promise<void>
   logout: () => void
 }
 
@@ -63,6 +64,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     },
   })
 
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: authApi.updateProfile,
+    onSuccess: (updatedUser) => {
+      queryClient.setQueryData(['currentUser'], updatedUser)
+    },
+  })
+
   // Logout function
   const logout = () => {
     authApi.logout()
@@ -80,6 +89,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     resendOtp: (userId: string, type: 'email' | 'phone') =>
       resendOtpMutation.mutateAsync({ userId, type }),
     login: loginMutation.mutateAsync,
+    updateProfile: async (data: { name: string }) => {
+      await updateProfileMutation.mutateAsync(data)
+    },
     logout,
   }
 
