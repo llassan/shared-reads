@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
   BookOpen,
   MapPin,
@@ -8,10 +9,20 @@ import {
   HandHeart,
   Sparkles,
   ArrowRight,
+  Users,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { Header } from '../components/layout/Header'
 import { Footer } from '../components/layout/Footer'
+import { statsApi } from '../api/stats'
+import { formatMoney } from '../lib/format'
+
+const daysAgo = (iso: string): string => {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
+  if (days <= 0) return 'Added today'
+  if (days === 1) return 'Added yesterday'
+  return `Added ${days} days ago`
+}
 
 const spines = [
   { title: 'The Night Library', h: 'h-40', c: 'bg-primary-800', t: 'text-primary-100' },
@@ -66,6 +77,39 @@ export const HomePage = () => {
   const { user } = useAuth()
   const primaryCta = user ? '/dashboard' : '/register'
   const primaryLabel = user ? 'Go to your dashboard' : 'Start sharing — it’s free'
+
+  const { data: stats } = useQuery({
+    queryKey: ['publicStats'],
+    queryFn: statsApi.getPublicStats,
+    staleTime: 60_000,
+  })
+
+  // Social proof only helps once there is something to prove — both
+  // sections stay hidden while the platform is empty.
+  const showProof = (stats?.totalBooks ?? 0) > 0
+  const liveStats = showProof
+    ? [
+        {
+          icon: BookOpen,
+          value: stats!.totalBooks,
+          label: stats!.totalBooks === 1 ? 'book available' : 'books available',
+        },
+        {
+          icon: Users,
+          value: stats!.totalReaders,
+          label: stats!.totalReaders === 1 ? 'reader' : 'readers',
+        },
+        ...(stats!.exchangedThisMonth > 0
+          ? [
+              {
+                icon: Repeat,
+                value: stats!.exchangedThisMonth,
+                label: stats!.exchangedThisMonth === 1 ? 'loan this month' : 'loans this month',
+              },
+            ]
+          : []),
+      ]
+    : []
 
   return (
     <div className="min-h-screen flex flex-col bg-paper">
@@ -137,6 +181,84 @@ export const HomePage = () => {
           </div>
         </div>
       </section>
+
+      {/* Live platform proof */}
+      {showProof && (
+        <section className="border-y border-stone-200/70 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {liveStats.map((s) => (
+                <div key={s.label} className="flex items-center gap-4">
+                  <span className="h-12 w-12 shrink-0 rounded-xl bg-primary-100 text-primary-800 flex items-center justify-center">
+                    <s.icon className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="font-display text-3xl font-semibold text-primary-950 leading-none">
+                      {s.value.toLocaleString()}
+                    </p>
+                    <p className="mt-1 text-sm text-stone-500">{s.label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Recently added shelf */}
+            {stats!.recentBooks.length > 0 && (
+              <div className="mt-12">
+                <div className="flex items-end justify-between mb-5">
+                  <h2 className="font-display text-2xl font-semibold text-primary-950">
+                    Recently added
+                  </h2>
+                  <Link
+                    to="/search"
+                    className="text-sm font-medium text-primary-700 hover:text-primary-900 inline-flex items-center gap-1"
+                  >
+                    Browse all <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+                <div className="grid grid-flow-col auto-cols-[minmax(160px,1fr)] sm:auto-cols-[minmax(180px,1fr)] gap-4 overflow-x-auto pb-2 -mx-1 px-1">
+                  {stats!.recentBooks.map((book) => (
+                    <Link
+                      key={book.id}
+                      to={`/books/${book.id}`}
+                      className="card !p-0 overflow-hidden group hover:shadow-lift hover:-translate-y-0.5 transition-all"
+                    >
+                      <div className="relative">
+                        <img
+                          src={book.images[0]}
+                          alt={book.title}
+                          loading="lazy"
+                          className="w-full aspect-[3/4] object-cover"
+                        />
+                        {book.rentalType === 'FREE' ? (
+                          <span className="absolute top-2.5 left-2.5 badge bg-primary-800 text-white">
+                            Free
+                          </span>
+                        ) : (
+                          book.rentalPrice != null && (
+                            <span className="absolute top-2.5 left-2.5 badge bg-accent-400 text-primary-950">
+                              {formatMoney(book.rentalPrice)}
+                            </span>
+                          )
+                        )}
+                      </div>
+                      <div className="p-3.5">
+                        <p className="font-semibold text-sm text-ink line-clamp-1 group-hover:text-primary-800 transition-colors">
+                          {book.title}
+                        </p>
+                        <p className="text-xs text-stone-500 line-clamp-1">by {book.author}</p>
+                        <p className="mt-1.5 text-[11px] text-stone-400">
+                          {daysAgo(book.createdAt)}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* How it works */}
       <section className="bg-white border-y border-stone-200/70">

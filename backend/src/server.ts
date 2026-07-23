@@ -57,7 +57,9 @@ import transactionRoutes from './routes/transactionRoutes';
 import reviewRoutes from './routes/reviewRoutes';
 import disputeRoutes from './routes/disputeRoutes';
 import adminRoutes from './routes/adminRoutes';
+import statsRoutes from './routes/statsRoutes';
 
+app.use('/api/v1/stats', statsRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/books', bookRoutes);
 app.use('/api/v1/search', searchRoutes);
