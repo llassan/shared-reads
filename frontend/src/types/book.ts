@@ -48,8 +48,8 @@ export interface CreateBookListingRequest {
 
 export interface SearchBooksRequest {
   query?: string
-  latitude: number
-  longitude: number
+  latitude?: number
+  longitude?: number
   radius?: number
   rentalType?: RentalType
   condition?: BookCondition
@@ -62,7 +62,7 @@ export interface SearchBooksRequest {
 export interface SearchBooksResponse {
   success: boolean
   data: {
-    books: (BookListing & { distance: number })[]
+    books: (BookListing & { distance: number | null })[]
     total: number
     page: number
     limit: number

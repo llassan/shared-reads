@@ -14,14 +14,16 @@ export const SearchPage = () => {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [radius, setRadius] = useState(5)
+  const [locationReady, setLocationReady] = useState(false)
+  const [radius, setRadius] = useState(0) // 0 = anywhere
   const [rentalType, setRentalType] = useState<RentalType | ''>('')
   const [condition, setCondition] = useState<BookCondition | ''>('')
   const [minPrice, setMinPrice] = useState<number | ''>('')
   const [maxPrice, setMaxPrice] = useState<number | ''>('')
-  const [hasSearched, setHasSearched] = useState(false)
 
-  // Get user's location on mount
+  // Try to get the user's location, but never block browsing on it —
+  // without a location, results are simply unfiltered and unsorted by
+  // distance instead of silently searching from nowhere.
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -30,14 +32,15 @@ export const SearchPage = () => {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           })
+          setLocationReady(true)
         },
-        (error) => {
-          console.error('Error getting location:', error)
-          setLocation({ lat: 0, lng: 0 })
-        }
+        () => {
+          setLocationReady(true)
+        },
+        { timeout: 8000 }
       )
     } else {
-      setLocation({ lat: 0, lng: 0 })
+      setLocationReady(true)
     }
   }, [])
 
@@ -46,23 +49,18 @@ export const SearchPage = () => {
     queryFn: () =>
       searchApi.searchBooks({
         query: query || undefined,
-        latitude: location!.lat,
-        longitude: location!.lng,
+        latitude: location?.lat,
+        longitude: location?.lng,
         radius,
         rentalType: rentalType || undefined,
         condition: condition || undefined,
         minPrice: minPrice || undefined,
         maxPrice: maxPrice || undefined,
       }),
-    enabled: hasSearched && !!location,
+    enabled: locationReady,
   })
 
   const handleSearch = () => {
-    if (!location) {
-      alert('Please enable location access to search for books')
-      return
-    }
-    setHasSearched(true)
     refetch()
   }
 
@@ -104,12 +102,15 @@ export const SearchPage = () => {
               className="input"
               value={radius}
               onChange={(e) => setRadius(parseFloat(e.target.value))}
+              disabled={!location}
+              title={!location ? 'Enable location access to filter by distance' : undefined}
             >
-              <option value="1">1 km</option>
+              <option value="0">Anywhere</option>
               <option value="2">2 km</option>
               <option value="5">5 km</option>
               <option value="10">10 km</option>
-              <option value="20">20 km</option>
+              <option value="25">25 km</option>
+              <option value="100">100 km</option>
             </select>
           </div>
           <div>
@@ -160,18 +161,19 @@ export const SearchPage = () => {
           </div>
         </div>
 
-        {!location && (
+        {locationReady && !location && (
           <div className="mt-4 bg-accent-50 border border-accent-200 text-stone-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
             <Compass className="h-4 w-4 text-accent-600" />
-            Enable location access to find books near you.
+            Location unavailable — showing books from everywhere, newest first.
+            Enable location access to sort by distance.
           </div>
         )}
       </div>
 
       {/* Results */}
-      {hasSearched && (
+      {
         <>
-          {isLoading ? (
+          {isLoading || !locationReady ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="card animate-pulse">
@@ -184,7 +186,8 @@ export const SearchPage = () => {
           ) : data && data.books.length > 0 ? (
             <>
               <p className="mb-5 text-sm text-stone-500">
-                {data.total} {data.total === 1 ? 'book' : 'books'} within {radius} km
+                {data.total} {data.total === 1 ? 'book' : 'books'}
+                {location && radius > 0 ? ` within ${radius} km` : ' available'}
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -200,10 +203,12 @@ export const SearchPage = () => {
                         alt={book.title}
                         className="w-full h-48 object-cover"
                       />
-                      <span className="absolute top-3 left-3 badge bg-white/95 text-ink shadow-sm">
-                        <MapPin className="h-3 w-3 text-primary-600" />
-                        {book.distance} km
-                      </span>
+                      {book.distance != null && (
+                        <span className="absolute top-3 left-3 badge bg-white/95 text-ink shadow-sm">
+                          <MapPin className="h-3 w-3 text-primary-600" />
+                          {book.distance} km
+                        </span>
+                      )}
                       {book.rentalType === 'FREE' ? (
                         <span className="absolute top-3 right-3 badge bg-primary-800 text-white">
                           Free
@@ -241,29 +246,17 @@ export const SearchPage = () => {
             <div className="text-center py-20 card">
               <BookX className="h-12 w-12 text-stone-300 mx-auto mb-4" />
               <h2 className="font-display text-2xl font-semibold text-ink mb-2">
-                No books found nearby
+                No books found
               </h2>
               <p className="text-stone-500 max-w-sm mx-auto">
-                Try widening the radius or loosening the filters — or be the first
-                to list this book in your area.
+                {location && radius > 0
+                  ? 'Try widening the radius or loosening the filters — or be the first to list this book in your area.'
+                  : 'Try a different title or author — or be the first to list this book.'}
               </p>
             </div>
           )}
         </>
-      )}
-
-      {!hasSearched && (
-        <div className="text-center py-20 card">
-          <Compass className="h-12 w-12 text-stone-300 mx-auto mb-4" />
-          <h2 className="font-display text-2xl font-semibold text-ink mb-2">
-            Discover your neighborhood's shelf
-          </h2>
-          <p className="text-stone-500 max-w-sm mx-auto">
-            Search by title or author, and we'll show you every copy shared
-            within walking distance.
-          </p>
-        </div>
-      )}
+      }
     </PageShell>
   )
 }

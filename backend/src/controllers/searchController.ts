@@ -100,29 +100,38 @@ export const searchBooks = asyncHandler(
       orderBy: { createdAt: 'desc' },
     });
 
-    // Filter by distance if location provided
+    // Distance is only meaningful when the caller shared a location
+    const hasLocation =
+      validatedData.latitude !== undefined && validatedData.longitude !== undefined;
+
     let booksWithDistance = allBooks.map((book) => {
       const bookLocation = book.location as any;
-      const distance = calculateDistance(
-        validatedData.latitude,
-        validatedData.longitude,
-        bookLocation.lat,
-        bookLocation.lng
-      );
+      const distance = hasLocation
+        ? parseFloat(
+            calculateDistance(
+              validatedData.latitude!,
+              validatedData.longitude!,
+              bookLocation.lat,
+              bookLocation.lng
+            ).toFixed(2)
+          )
+        : null;
 
       return {
         ...book,
-        distance: parseFloat(distance.toFixed(2)),
+        distance,
       };
     });
 
-    // Filter by radius
-    booksWithDistance = booksWithDistance.filter(
-      (book) => book.distance <= validatedData.radius
-    );
-
-    // Sort by distance
-    booksWithDistance.sort((a, b) => a.distance - b.distance);
+    if (hasLocation) {
+      // radius 0 means "anywhere" — keep distances but skip the cutoff
+      if (validatedData.radius > 0) {
+        booksWithDistance = booksWithDistance.filter(
+          (book) => book.distance! <= validatedData.radius
+        );
+      }
+      booksWithDistance.sort((a, b) => a.distance! - b.distance!);
+    }
 
     // Paginate results
     const total = booksWithDistance.length;

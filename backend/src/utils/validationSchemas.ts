@@ -56,9 +56,9 @@ export const createBookListingSchema = z.object({
 // Search validation schema
 export const searchBooksSchema = z.object({
   query: z.string().optional(),
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
-  radius: z.number().min(0.1).max(50).default(5), // km
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  radius: z.number().min(0).max(50000).default(5), // km; 0 = no distance limit
   rentalType: z.enum(['FREE', 'PAID']).optional(),
   condition: z.enum(['NEW', 'LIKE_NEW', 'GOOD', 'ACCEPTABLE']).optional(),
   minPrice: z.number().min(0).optional(),
